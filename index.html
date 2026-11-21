@@ -1,0 +1,996 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Bulut Çobanı">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#d9f1ff">
+<style>
+:root { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+html, body { margin: 0; overscroll-behavior: none; -webkit-text-size-adjust: 100%; -webkit-touch-callout: none; }
+img { max-width: 100%; }
+[hidden] { display: none !important; }
+</style>
+<title>Bulut Çobanı</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Nunito:wght@500;700&display=swap">
+<style>
+/* Düzen: üstte başlık ve koleksiyon rafı, ortada tek parça tuval, altında yetenekler, en altta sekmeli panel (yükselt, görev, rozet, ayar). Gündüz teması bilerek tek. */
+:root {
+  --bg: #d9f1ff;
+  --card: #ffffff;
+  --ink: #1d3b63;
+  --muted: #5d7a9e;
+  --pink: #ff6f91;
+  --line: #b9dcf5;
+  --soft: #eaf5fd;
+  --font-display: 'Baloo 2', 'Arial Rounded MT Bold', system-ui, sans-serif;
+  --font-body: 'Nunito', system-ui, sans-serif;
+  color-scheme: light;
+}
+* { box-sizing: border-box; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font: 15px/1.4 var(--font-body);
+  -webkit-user-select: none; user-select: none;
+  padding-block: 10px 28px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+input { -webkit-user-select: auto; user-select: auto; }
+.app { max-width: 460px; margin: 0 auto; display: flex; flex-direction: column; gap: 10px; }
+.top { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+h1 { font-family: var(--font-display); font-weight: 800; font-size: 28px; line-height: 1; margin: 0; letter-spacing: -0.01em; }
+.chips { display: flex; gap: 6px; align-items: center; }
+.chip { background: var(--card); border: 2px solid var(--line); border-radius: 999px; padding: 4px 12px; font: 700 13px var(--font-body); color: var(--ink); white-space: nowrap; min-height: 32px; }
+button.chip { cursor: pointer; min-height: 44px; }
+.chip.ready { background: var(--pink); border-color: var(--pink); color: #fff; }
+.sound { background: var(--card); border: 2px solid var(--line); border-radius: 999px; width: 44px; height: 44px; display: grid; place-items: center; cursor: pointer; color: var(--ink); }
+button:focus-visible, canvas:focus-visible, input:focus-visible { outline: 3px solid var(--pink); outline-offset: 2px; }
+.sound[aria-pressed="true"] { opacity: 0.55; }
+
+.shelf { display: flex; align-items: center; gap: 8px; background: var(--card); border: 2px solid var(--line); border-radius: 16px; padding: 8px 12px; }
+.shelf > span { font-family: var(--font-display); font-weight: 600; font-size: 14px; color: var(--muted); margin-right: auto; }
+.slot { width: 28px; height: 28px; border-radius: 50%; border: 3px dashed var(--line); background: #f3faff; transition: transform 0.3s; }
+.slot.on { border: 3px solid #fff; box-shadow: 0 0 0 2px var(--c), 0 3px 8px rgba(0,0,0,0.18); background: var(--c); transform: scale(1.12); }
+
+canvas {
+  display: block; margin: 0 auto; touch-action: none; user-select: none; -webkit-user-select: none;
+  width: min(100%, calc((100svh - 250px) * 360 / 560)); height: auto; aspect-ratio: 360 / 560;
+  border-radius: 20px; border: 3px solid #fff; box-shadow: 0 6px 20px rgba(29,59,99,0.18); background: #bfe6ff;
+}
+.abil { display: flex; gap: 8px; }
+.abil button { flex: 1 1 0; min-width: 0; min-height: 52px; border-radius: 14px; border: 2px solid var(--line); background: var(--card); color: var(--ink); cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 4px 6px; }
+.abil b { font-family: var(--font-display); font-weight: 600; font-size: 14px; line-height: 1.1; text-align: center; }
+.abil small { font-size: 12px; color: var(--muted); }
+.abil button:not(:disabled) { border-color: var(--pink); }
+.abil button:not(:disabled) small { color: var(--pink); font-weight: 700; }
+.abil button:disabled { cursor: not-allowed; opacity: 0.7; }
+.msg { text-align: center; min-height: 44px; font-weight: 700; color: var(--ink); display: grid; place-items: center; }
+
+.tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; background: var(--card); border: 2px solid var(--line); border-radius: 16px; padding: 4px; }
+.tabs button { min-height: 44px; border: 0; border-radius: 12px; background: transparent; color: var(--muted); font: 700 13px var(--font-body); cursor: pointer; padding: 4px; }
+.tabs button[aria-selected="true"] { background: var(--pink); color: #fff; }
+.panel { background: var(--card); border: 2px solid var(--line); border-radius: 16px; padding: 14px; display: flex; flex-direction: column; gap: 10px; scroll-margin-top: 10px; }
+.panel h2 { font-family: var(--font-display); font-weight: 800; font-size: 20px; margin: 0; }
+.panel .sub { margin: -6px 0 0; color: var(--muted); font-size: 13px; }
+.row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding-top: 10px; border-top: 2px solid var(--soft); }
+.row:first-of-type { border-top: 0; padding-top: 0; }
+.row-t { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1 1 auto; }
+.row-t b { font-family: var(--font-display); font-weight: 600; font-size: 16px; }
+.row-t span { font-size: 13px; color: var(--muted); }
+.pips { display: flex; gap: 4px; margin-top: 4px; }
+.pips i { width: 14px; height: 6px; border-radius: 999px; background: #dcecf8; }
+.pips i.on { background: var(--pink); }
+.bar { height: 8px; border-radius: 999px; background: #dcecf8; margin-top: 4px; overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--pink); border-radius: 999px; }
+.buy { flex: none; min-width: 92px; min-height: 44px; border-radius: 12px; border: 0; background: var(--pink); color: #fff; font: 800 15px var(--font-display); cursor: pointer; padding: 6px 12px; }
+.buy:disabled { background: #dcecf8; color: #8aa5c0; cursor: not-allowed; }
+.stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.stat { background: var(--soft); border-radius: 12px; padding: 8px 12px; display: flex; flex-direction: column; }
+.stat b { font-family: var(--font-display); font-size: 22px; line-height: 1.1; }
+.stat span { font-size: 12px; color: var(--muted); }
+.badge-row.off { opacity: 0.5; }
+.badge-mark { flex: none; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: #dcecf8; color: #fff; font-weight: 800; }
+.badge-row:not(.off) .badge-mark { background: #5fd47f; }
+.seg { display: inline-flex; flex-wrap: wrap; border: 2px solid var(--line); border-radius: 12px; overflow: hidden; }
+.seg button { background: transparent; border: 0; padding: 8px 12px; min-height: 44px; color: var(--ink); font: 700 13px var(--font-body); cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--pink); color: #fff; }
+.setrow { display: flex; flex-direction: column; gap: 6px; padding-top: 10px; border-top: 2px solid var(--soft); }
+.setrow:first-of-type { border-top: 0; padding-top: 0; }
+.setrow > b { font-family: var(--font-display); font-weight: 600; font-size: 16px; }
+.setrow small { color: var(--muted); font-size: 13px; }
+.setrow input[type=range] { width: 100%; accent-color: var(--pink); min-height: 32px; }
+.check { flex-direction: row; align-items: center; gap: 10px; min-height: 44px; }
+.check input { width: 22px; height: 22px; accent-color: var(--pink); }
+.danger { min-height: 44px; border-radius: 12px; border: 2px solid #ffb4c3; background: #fff; color: #d63a62; font: 700 14px var(--font-body); cursor: pointer; }
+.badge { display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 6px; margin-left: 6px; border-radius: 999px; background: var(--pink); color: #fff; font: 800 12px var(--font-body); }
+.tabs button[aria-selected="true"] .badge { background: #fff; color: var(--pink); }
+.tag { margin-left: 8px; padding: 2px 8px; border-radius: 999px; background: var(--pink); color: #fff; font: 800 11px var(--font-body); font-style: normal; vertical-align: middle; }
+.row.ready { background: #fff1f5; border-radius: 12px; padding: 10px; margin-inline: -10px; border-top-color: transparent; }
+.toast { position: fixed; z-index: 50; top: calc(env(safe-area-inset-top, 0px) + 8px); left: 50%; transform: translateX(-50%); width: min(440px, calc(100% - 32px)); display: flex; align-items: center; gap: 10px; background: var(--pink); color: #fff; border-radius: 16px; padding: 10px 6px 10px 14px; box-shadow: 0 8px 24px rgba(214,58,98,0.35); }
+.toast-t { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+.toast-t b { font-family: var(--font-display); font-weight: 800; font-size: 16px; line-height: 1.2; }
+.toast-t span { font-size: 13px; opacity: 0.95; }
+.toast button { min-height: 44px; border-radius: 12px; border: 0; cursor: pointer; font: 800 14px var(--font-display); }
+.toast .go { background: #fff; color: var(--pink); padding: 0 14px; }
+.toast .x { background: transparent; color: #fff; width: 44px; font-size: 22px; line-height: 1; }
+.toast.in { animation: toastIn 0.35s ease-out; }
+@keyframes toastIn { from { transform: translate(-50%, -140%); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
+@keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.06); } }
+.row.ready .buy { animation: pulse 1.4s ease-in-out infinite; }
+.calm .toast.in, .calm .row.ready .buy { animation: none; }
+</style>
+
+</head>
+<body>
+<div class="app">
+  <div class="top">
+    <h1>Bulut Çobanı</h1>
+    <div class="chips">
+      <span class="chip" id="tierChip">Kademe 1</span>
+      <button class="chip" id="goldChip" aria-label="Yükseltmelere git">Damla 0</button>
+      <button class="sound" id="sound" aria-pressed="false" aria-label="Sesi aç veya kapat">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M17 9a4 4 0 0 1 0 6"/><path d="M19.5 6.5a8 8 0 0 1 0 11"/></svg>
+      </button>
+    </div>
+  </div>
+  <div class="shelf" aria-label="Çiçek koleksiyonu"><span id="shelfLabel">Koleksiyon</span><i class="slot" data-k="p" style="--c:#ff8fb1"></i><i class="slot" data-k="b" style="--c:#5bb8ff"></i><i class="slot" data-k="y" style="--c:#ffd23f"></i><i class="slot" data-k="bp" style="--c:#b185ff"></i><i class="slot" data-k="py" style="--c:#ff9a4d"></i><i class="slot" data-k="by" style="--c:#5fd47f"></i></div>
+  <canvas id="game" width="720" height="1120" tabindex="0" aria-label="Oyun alanı: bulutları sürükle"></canvas>
+  <div class="abil" id="abil"></div>
+  <div class="msg" id="msg" aria-live="polite"></div>
+  <div class="toast" id="toast" role="status" hidden><div class="toast-t"><b id="toastTitle"></b><span id="toastSub"></span></div><button class="go" id="toastGo">Göster</button><button class="x" id="toastX" aria-label="Kapat">×</button></div>
+
+  <div class="tabs" role="tablist" id="tabs">
+    <button role="tab" data-tab="ups" aria-selected="true" id="tabUps">Yükselt</button>
+    <button role="tab" data-tab="quests" aria-selected="false" id="tabQuests">Görevler</button>
+    <button role="tab" data-tab="badges" aria-selected="false">Rozetler</button>
+    <button role="tab" data-tab="set" aria-selected="false">Ayarlar</button>
+  </div>
+
+  <section class="panel" id="panel-ups" role="tabpanel">
+    <h2>Yükseltmeler</h2>
+    <p class="sub">Damla kazanmak kolay değil: çiçek aç, kombo yap, görev bitir. Yükseltmeler her seviyede pahalanır.</p>
+    <div id="ups"></div>
+  </section>
+
+  <section class="panel" id="panel-quests" role="tabpanel" hidden>
+    <h2>Görevler</h2>
+    <p class="sub">Günlük hediyeni al, görevleri bitir. Biten görevin yerine yenisi gelir.</p>
+    <div id="questList"></div>
+  </section>
+
+  <section class="panel" id="panel-badges" role="tabpanel" hidden>
+    <h2>Bahçıvan kartı</h2>
+    <div class="stats" id="stats"></div>
+    <h2 style="margin-top:6px">Rozetler</h2>
+    <div id="badgeList"></div>
+  </section>
+
+  <section class="panel" id="panel-set" role="tabpanel" hidden>
+    <h2>Ayarlar</h2>
+    <div class="setrow"><b>Zorluk</b><div class="seg" data-set="diff"><button data-v="easy">Rahat</button><button data-v="normal">Normal</button><button data-v="hard">Zor</button></div><small id="diffNote"></small></div>
+    <div class="setrow"><b>Ses seviyesi</b><input type="range" id="vol" min="0" max="100" aria-label="Ses seviyesi"></div>
+    <div class="setrow"><b>Gökyüzü</b><div class="seg" data-set="theme"><button data-v="day">Gündüz</button><button data-v="dusk" id="thDusk">Gün batımı</button><button data-v="night" id="thNight">Gece</button></div><small>Yeni gökyüzleri damlayla açılır.</small></div>
+    <div class="setrow"><b>Bulut yüzü</b><div class="seg" data-set="face"><button data-v="smile">Gülen</button><button data-v="sleepy">Uykulu</button><button data-v="cool">Havalı</button></div></div>
+    <label class="setrow check"><input type="checkbox" id="motion"> Hareketi azalt</label>
+    <button class="danger" id="resetBtn">Tüm ilerlemeyi sıfırla</button>
+  </section>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  var W = 360, H = 560, GROUND = 430, SEA = 505;
+  var HEX = { p: '#ff8fb1', b: '#5bb8ff', y: '#ffd23f', bp: '#b185ff', py: '#ff9a4d', by: '#5fd47f', w: '#ffffff' };
+  var NAMES = { p: 'Pembe', b: 'Mavi', y: 'Sarı', bp: 'Mor', py: 'Turuncu', by: 'Yeşil' };
+  var KEYS = ['p', 'b', 'y', 'bp', 'py', 'by'];
+  var SAVE = 'bulut-cobani-v1';
+  var sysReduce = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+
+  // Çift dokunuşla ve çimdikle yakınlaştırmayı engelle
+  ['gesturestart', 'gesturechange', 'gestureend'].forEach(function (ev) {
+    document.addEventListener(ev, function (e) { e.preventDefault(); }, { passive: false });
+  });
+
+  var cv = document.getElementById('game'), ctx = cv.getContext('2d');
+  ctx.scale(2, 2);
+  var msgEl = document.getElementById('msg');
+
+  /* ---------- kayıt ---------- */
+  var UPKEYS = ['power', 'tank', 'refill', 'wide', 'idle', 'luck', 'cool'];
+  function defaults() {
+    return { ver: 2, garden: 1, rainbows: 0, found: {}, gold: 0, up: {}, quests: [], badges: {},
+      daily: { last: '', streak: 0 },
+      stats: { blooms: 0, tiers: 0, refills: 0, sec: 0, maxTier: 1, earned: 0 },
+      set: { diff: 'normal', vol: 80, theme: 'day', face: 'smile', motion: null, owned: { day: true } } };
+  }
+  var st = defaults();
+  try {
+    var raw = localStorage.getItem(SAVE);
+    if (raw) { var L = JSON.parse(raw); if (L && L.found) st = L; }
+  } catch (e) {}
+  (function fix() {
+    var d = defaults();
+    st.gold = st.gold || 0; st.rainbows = st.rainbows || 0;
+    st.up = st.up || {}; UPKEYS.forEach(function (k) { st.up[k] = st.up[k] || 0; });
+    st.quests = st.quests || []; st.badges = st.badges || {};
+    st.daily = st.daily || d.daily;
+    st.stats = st.stats || d.stats; Object.keys(d.stats).forEach(function (k) { st.stats[k] = st.stats[k] || 0; });
+    st.stats.maxTier = Math.max(st.stats.maxTier, st.garden || 1);
+    st.set = st.set || d.set; Object.keys(d.set).forEach(function (k) { if (st.set[k] === undefined) st.set[k] = d.set[k]; });
+    st.set.owned = st.set.owned || { day: true }; st.set.owned.day = true;
+    if (!st.ver || st.ver < 2) { st.quests = []; st.ver = 2; }
+  })();
+  function save() { try { localStorage.setItem(SAVE, JSON.stringify(st)); } catch (e) {} }
+  function motionReduced() { return st.set.motion === null ? sysReduce : !!st.set.motion; }
+  function earn(n) { st.gold += n; st.stats.earned += n; }
+
+  /* ---------- zorluk, kademe, yükseltme hesapları ---------- */
+  var DIFF = {
+    easy: { fill: 1.4, drain: 0.7, wind: 0, reward: 0.8, decay: 0, note: 'Çiçekler çabuk sulanır, rüzgar ve solma yok. Ödüller ×0,8.' },
+    normal: { fill: 1, drain: 1, wind: 1, reward: 1, decay: 1, note: 'Dengeli oyun.' },
+    hard: { fill: 0.8, drain: 1.3, wind: 1.3, reward: 1.4, decay: 1.6, note: 'Çiçekler az sulanır ve çabuk solar, bulut çabuk susar. Ödüller ×1,4.' }
+  };
+  function D() { return DIFF[st.set.diff] || DIFF.normal; }
+  var MAXLV = 6;
+  var UPS = [
+    { id: 'power', name: 'Yağmur gücü', desc: 'Her damla çiçeği daha çok sular.', base: 24 },
+    { id: 'tank', name: 'Büyük bulut', desc: 'Bulutun suyu daha geç biter.', base: 24 },
+    { id: 'refill', name: 'Hızlı dolum', desc: 'Denizde bulut çabuk dolar.', base: 18 },
+    { id: 'wide', name: 'Geniş yağmur', desc: 'Yağmur daha geniş alana düşer.', base: 30 },
+    { id: 'idle', name: 'Bulut uykusu', desc: 'Gökte boşta duran bulutlar yavaşça dolar.', base: 36 },
+    { id: 'luck', name: 'Altın dokunuş', desc: 'Çiçekler ve görevler daha çok damla verir.', base: 45 },
+    { id: 'cool', name: 'Hızlı yetenek', desc: 'Yetenekler daha çabuk hazır olur.', base: 36 }
+  ];
+  function upCost(u) { return Math.round(u.base * Math.pow(1.85, st.up[u.id])); }
+  function luckF() { return 1 + 0.1 * st.up.luck; }
+  function isBoss() { return st.garden >= 5 && st.garden % 5 === 0; }
+  function tierF() { return Math.min(4.5, 1 + 0.14 * (st.garden - 1)); }
+
+  /* olaylar, kombo, dinginlik: oyun içi geçici durumlar */
+  var GEV = [
+    { id: 'heat', name: 'Sıcak hava dalgası', sub: 'Bulutların suyu iki kat hızlı buharlaşıyor.', min: 2, dur: 20, drain: 2, good: false },
+    { id: 'dry', name: 'Kuraklık', sub: 'Sulanmayan çiçekler üç kat hızlı solar.', min: 2, dur: 20, decay: 3, good: false },
+    { id: 'gust', name: 'Sert rüzgar', sub: 'Yağmur çok savruluyor.', min: 3, dur: 18, wind: 2.2, good: false },
+    { id: 'bless', name: 'Bereket yağmuru', sub: 'Çiçek ödülleri iki kat!', min: 2, dur: 20, reward: 2, good: true }
+  ];
+  var ev = null, evNext = 50, calmT = 0, combo = 0, comboT = 0;
+  function evMod(k) { return ev && ev.def[k] !== undefined ? ev.def[k] : 1; }
+
+  function fillPer() { return 0.034 * (1 + 0.15 * st.up.power) * D().fill / tierF(); }
+  function drainRate() { return 0.13 * Math.min(2.5, 1 + 0.06 * (st.garden - 1)) * D().drain * Math.pow(0.88, st.up.tank) * evMod('drain') * (calmT > 0 ? 0.5 : 1); }
+  function decayRate() { return 0.012 * (1 + 0.05 * (st.garden - 1)) * D().decay * evMod('decay'); }
+  function refillRate() { return 0.5 * (1 + 0.25 * st.up.refill); }
+  function hitR() { return 30 + 4 * st.up.wide; }
+  function spread() { return 22 + 5 * st.up.wide; }
+  function windStr() { return st.garden >= 3 ? Math.min(70, 12 * (st.garden - 2)) * D().wind : 0; }
+  function windNow() { return calmT > 0 ? 0 : windStr() * evMod('wind') * Math.sin(tAll * 0.5); }
+  function money(n) {
+    var v = n * D().reward * luckF() * evMod('reward'), f = Math.floor(v);
+    return Math.max(1, f + (Math.random() < v - f ? 1 : 0));
+  }
+  function tierNote() {
+    if (isBoss()) return 'Büyük bahçe: ödüller üç kat!';
+    if (st.garden === 1) return 'Susayan çiçekleri bul';
+    if (st.garden === 2) return 'İki renkli çiçekler ve olaylar başlıyor';
+    if (st.garden === 3) return 'Rüzgar çıktı, yağmur savruluyor';
+    if (st.garden === 4) return 'Beş tohum birden';
+    if (st.garden === 7) return 'Altı tohum birden';
+    return 'Çiçekler daha çok su istiyor';
+  }
+
+  /* ---------- yetenekler ---------- */
+  var ABIL = [
+    { id: 'sun', name: 'Güneş dalgası', cd: 60 },
+    { id: 'herd', name: 'Bulut sürüsü', cd: 75 },
+    { id: 'calm', name: 'Dinginlik', cd: 70 }
+  ];
+  var cdLeft = { sun: 0, herd: 0, calm: 0 };
+  function cdFull(a) { return a.cd * Math.pow(0.85, st.up.cool); }
+
+  /* ---------- ses ---------- */
+  var AC = null, muted = false;
+  function ac() {
+    if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} }
+    if (AC && AC.state === 'suspended') AC.resume();
+    return AC;
+  }
+  function tone(f, dur, delay, type, vol) {
+    var v = (vol || 0.12) * (st.set.vol / 80);
+    if (muted || v < 0.002) return;
+    var c = ac(); if (!c) return;
+    var t = c.currentTime + (delay || 0), o = c.createOscillator(), g = c.createGain();
+    o.type = type || 'sine'; o.frequency.value = f;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(v, t + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(c.destination); o.start(t); o.stop(t + dur + 0.05);
+  }
+  var PENTA = [523, 587, 659, 784, 880, 1047];
+  function bloomSound() { var s = Math.floor(Math.random() * 3); for (var i = 0; i < 3; i++) tone(PENTA[s + i], 0.35, i * 0.1, 'triangle', 0.14); }
+  function fanfare() { for (var i = 0; i < 6; i++) tone(PENTA[i], 0.5, i * 0.12, 'triangle', 0.15); tone(1319, 0.9, 0.8, 'triangle', 0.15); }
+  function splashSound() { tone(700, 0.12, 0, 'sine', 0.08); tone(950, 0.12, 0.08, 'sine', 0.08); }
+  function buySound() { tone(660, 0.15, 0, 'triangle', 0.12); tone(990, 0.25, 0.1, 'triangle', 0.12); }
+  function warnSound() { tone(300, 0.25, 0, 'sawtooth', 0.06); tone(240, 0.3, 0.15, 'sawtooth', 0.06); }
+
+  var soundBtn = document.getElementById('sound');
+  soundBtn.addEventListener('click', function () { muted = !muted; soundBtn.setAttribute('aria-pressed', String(muted)); if (!muted) { ac(); tone(660, 0.2, 0, 'triangle', 0.1); } });
+
+  /* ---------- yardımcılar ---------- */
+  function rnd(a, b) { return a + Math.random() * (b - a); }
+  function hex2rgb(h) { return [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)]; }
+  function mix(a, b, t) { var A = hex2rgb(a), B = hex2rgb(b); return 'rgb(' + Math.round(A[0] + (B[0] - A[0]) * t) + ',' + Math.round(A[1] + (B[1] - A[1]) * t) + ',' + Math.round(A[2] + (B[2] - A[2]) * t) + ')'; }
+  function easeOutBack(t) { var c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2); }
+  function say(t) { msgEl.textContent = t; }
+  function fmtTime(sec) { var m = Math.floor(sec / 60); return m < 60 ? m + ' dk' : Math.floor(m / 60) + ' sa ' + (m % 60) + ' dk'; }
+  function $(id) { return document.getElementById(id); }
+  function dayStr(d) { return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+  function today() { return dayStr(new Date()); }
+  function yesterday() { return dayStr(new Date(Date.now() - 86400000)); }
+  function giftReady() { return st.daily.last !== today(); }
+  function nextStreak() { return st.daily.last === yesterday() ? st.daily.streak + 1 : 1; }
+  function giftAmount(s) { return 5 + 3 * Math.min(s - 1, 6); }
+
+  /* ---------- oyun durumu ---------- */
+  function mkCloud(x, y, col, vx) { return { x: x, y: y, col: col, water: 1, vx: vx, holder: null, tx: 0, ty: 0, acc: 0, wasLow: false, dryMark: false }; }
+  var clouds = [mkCloud(80, 120, 'p', 10), mkCloud(190, 190, 'b', -9), mkCloud(280, 130, 'y', 8)];
+  var seeds = [], drops = [], parts = [], flies = [];
+  var gardenTimer = 0, rainbowT = 0, tAll = 0, bannerT = 0, bannerTitle = '', bannerSub = '', sunFlash = 0, abilTick = 0;
+  var STARS = []; for (var si = 0; si < 30; si++) STARS.push({ x: rnd(8, 352), y: rnd(8, 300), r: rnd(0.8, 1.8), ph: rnd(0, 6) });
+
+  function newGarden() {
+    var n = Math.min(6, 4 + Math.floor((st.garden - 1) / 3));
+    var allowed = st.garden <= 1 ? ['p', 'b', 'y'] : KEYS;
+    if (isBoss()) allowed = ['bp', 'py', 'by'];
+    var missing = allowed.filter(function (k) { return !st.found[k]; });
+    seeds = [];
+    for (var i = 0; i < n; i++) {
+      var key;
+      if (missing.length && Math.random() < 0.7) { key = missing.splice(Math.floor(Math.random() * missing.length), 1)[0]; }
+      else { key = allowed[Math.floor(Math.random() * allowed.length)]; }
+      var need = key.split(''), fill = {};
+      need.forEach(function (c) { fill[c] = 0; });
+      seeds.push({ x: 0, y: 455, key: key, need: need, fill: fill, done: false, t: 0, row: 0, idle: 0 });
+    }
+    seeds.forEach(function (s, i) { s.x = (W / (n + 1)) * (i + 1); s.row = n >= 5 ? i % 2 : 0; });
+    st.stats.maxTier = Math.max(st.stats.maxTier, st.garden);
+    bannerT = 3.2; bannerTitle = 'Kademe ' + st.garden; bannerSub = tierNote();
+  }
+
+  /* ---------- görevler ve rozetler ---------- */
+  function newQuest() {
+    var tier = st.garden, r = Math.random(), q;
+    if (r < 0.35) { var n = 5 + tier; q = { t: 'any', n: n, r: Math.round(n * 0.7) }; }
+    else if (r < 0.7) { var pool = tier < 2 ? ['p', 'b', 'y'] : KEYS, k = pool[Math.floor(Math.random() * pool.length)], n2 = 2 + Math.floor(Math.random() * 2); q = { t: 'key', k: k, n: n2, r: n2 * 2 }; }
+    else if (r < 0.85) { q = { t: 'tier', n: 1, r: 5 + tier }; }
+    else { var n3 = 4 + Math.floor(Math.random() * 3); q = { t: 'refill', n: n3, r: n3 }; }
+    q.p = 0; return q;
+  }
+  while (st.quests.length < 3) st.quests.push(newQuest());
+  function qText(q) {
+    if (q.t === 'any') return q.n + ' çiçek aç';
+    if (q.t === 'key') return q.n + ' ' + NAMES[q.k].toLocaleLowerCase('tr') + ' çiçek aç';
+    if (q.t === 'tier') return 'Bir kademeyi bitir';
+    return 'Bulutları denizde ' + q.n + ' kez doldur';
+  }
+  function questAdd(t, k, a) {
+    st.quests.forEach(function (q) { if (q.p < q.n && q.t === t && (t !== 'key' || q.k === k)) q.p = Math.min(q.n, q.p + a); });
+  }
+  var BADGES = [
+    { id: 'first', name: 'İlk çiçek', desc: 'İlk çiçeğini aç.', r: 2, test: function () { return st.stats.blooms >= 1; } },
+    { id: 'b50', name: 'Bahçıvan', desc: '50 çiçek aç.', r: 8, test: function () { return st.stats.blooms >= 50; } },
+    { id: 'b200', name: 'Çiçek ordusu', desc: '200 çiçek aç.', r: 20, test: function () { return st.stats.blooms >= 200; } },
+    { id: 't5', name: 'Kademe 5', desc: 'Beşinci kademeye ulaş.', r: 8, test: function () { return st.stats.maxTier >= 5; } },
+    { id: 't10', name: 'Kademe 10', desc: 'Onuncu kademeye ulaş.', r: 15, test: function () { return st.stats.maxTier >= 10; } },
+    { id: 't20', name: 'Kademe 20', desc: 'Yirminci kademeye ulaş.', r: 35, test: function () { return st.stats.maxTier >= 20; } },
+    { id: 'rb1', name: 'Gökkuşağı avcısı', desc: 'İlk gökkuşağını çıkar.', r: 10, test: function () { return st.rainbows >= 1; } },
+    { id: 'rb3', name: 'Renk ustası', desc: '3 gökkuşağı çıkar.', r: 25, test: function () { return st.rainbows >= 3; } },
+    { id: 'max', name: 'Tam güç', desc: 'Bir yükseltmeyi en üst seviyeye çıkar.', r: 15, test: function () { return UPS.some(function (u) { return st.up[u.id] >= MAXLV; }); } },
+    { id: 'carry', name: 'Su taşıyıcı', desc: 'Bulutları denizde 30 kez doldur.', r: 8, test: function () { return st.stats.refills >= 30; } },
+    { id: 'earn', name: 'Birikimci', desc: 'Toplam 500 damla kazan.', r: 20, test: function () { return st.stats.earned >= 500; } },
+    { id: 'combo', name: 'Zincir ustası', desc: 'Kombo ×5 yap.', r: 12, test: function () { return st.stats.bestCombo >= 5; } }
+  ];
+  function checkBadges() {
+    BADGES.forEach(function (b) {
+      if (!st.badges[b.id] && b.test()) {
+        st.badges[b.id] = true; earn(b.r);
+        say('Rozet kazandın: ' + b.name + ' · +' + b.r + ' damla'); buySound();
+      }
+    });
+  }
+
+  /* ---------- arayüz ---------- */
+  var upsEl = $('ups'), upRows = {};
+  function buildUps() {
+    UPS.forEach(function (u) {
+      var row = document.createElement('div'); row.className = 'row';
+      var pips = ''; for (var i = 0; i < MAXLV; i++) pips += '<i></i>';
+      row.innerHTML = '<div class="row-t"><b>' + u.name + '<em class="tag" hidden>Hazır</em></b><span>' + u.desc + '</span><div class="pips">' + pips + '</div></div><button class="buy" data-up="' + u.id + '"></button>';
+      upsEl.appendChild(row);
+      upRows[u.id] = { row: row, tag: row.querySelector('.tag'), btn: row.querySelector('button'), pips: row.querySelectorAll('.pips i') };
+    });
+  }
+  var abilEl = $('abil'), abilBtns = {};
+  ABIL.forEach(function (a) {
+    var b = document.createElement('button');
+    b.setAttribute('data-ab', a.id);
+    b.innerHTML = '<b>' + a.name + '</b><small>Hazır</small>';
+    abilEl.appendChild(b); abilBtns[a.id] = b;
+  });
+  function updateAbil() {
+    ABIL.forEach(function (a) {
+      var b = abilBtns[a.id], left = cdLeft[a.id];
+      b.disabled = left > 0;
+      b.querySelector('small').textContent = left > 0 ? Math.ceil(left) + ' sn' : 'Hazır';
+    });
+  }
+
+  function affordable() {
+    return UPS.some(function (u) { return st.up[u.id] < MAXLV && st.gold >= upCost(u); });
+  }
+  function readyUps() {
+    return UPS.filter(function (u) { return st.up[u.id] < MAXLV && st.gold >= upCost(u); });
+  }
+  var notified = null, toastTimer = null, toastTab = 'ups';
+  function hideToast() { $('toast').hidden = true; clearTimeout(toastTimer); }
+  function showToast(title, sub, tab) {
+    var el = $('toast'); toastTab = tab || 'ups';
+    $('toastTitle').textContent = title; $('toastSub').textContent = sub;
+    el.hidden = false; el.classList.remove('in'); void el.offsetWidth; el.classList.add('in');
+    clearTimeout(toastTimer); toastTimer = setTimeout(hideToast, 7000);
+  }
+  function notifyUps(list) {
+    var cur = {}; list.forEach(function (u) { cur[u.id] = true; });
+    if (!list.length && toastTab === 'ups') hideToast();
+    if (notified === null) { notified = cur; return; }
+    var fresh = list.filter(function (u) { return !notified[u.id]; });
+    notified = cur;
+    if (!fresh.length) return;
+    showToast('Yükseltme hazır!', fresh[0].name + ' için yeterli damlan var' + (list.length > 1 ? ' · ' + list.length + ' yükseltme hazır' : '') + '.', 'ups');
+    tone(784, 0.18, 0, 'triangle', 0.12); tone(1047, 0.28, 0.12, 'triangle', 0.12);
+  }
+  var THEME_COST = { day: 0, dusk: 100, night: 250 };
+  var THEME_NAME = { day: 'Gündüz', dusk: 'Gün batımı', night: 'Gece' };
+
+  function updateUI() {
+    checkBadges();
+    $('tierChip').textContent = 'Kademe ' + st.garden + (isBoss() ? ' · Büyük' : '');
+    var gc = $('goldChip'); gc.textContent = 'Damla ' + st.gold; gc.classList.toggle('ready', affordable());
+    $('shelfLabel').textContent = 'Koleksiyon' + (st.rainbows ? ' · gökkuşağı ' + st.rainbows : '');
+    var slots = document.querySelectorAll('.slot');
+    for (var i = 0; i < slots.length; i++) slots[i].classList.toggle('on', !!st.found[slots[i].getAttribute('data-k')]);
+
+    UPS.forEach(function (u) {
+      var r = upRows[u.id], lv = st.up[u.id];
+      for (var j = 0; j < r.pips.length; j++) r.pips[j].classList.toggle('on', j < lv);
+      if (lv >= MAXLV) { r.btn.textContent = 'En üst'; r.btn.disabled = true; }
+      else { r.btn.textContent = 'Al · ' + upCost(u); r.btn.disabled = st.gold < upCost(u); }
+    });
+    var rl = readyUps();
+    UPS.forEach(function (u) {
+      var on = rl.some(function (r) { return r.id === u.id; });
+      upRows[u.id].row.classList.toggle('ready', on); upRows[u.id].tag.hidden = !on;
+    });
+    $('tabUps').innerHTML = 'Yükselt' + (rl.length ? '<span class="badge">' + rl.length + '</span>' : '');
+    document.body.classList.toggle('calm', motionReduced());
+    notifyUps(rl);
+
+    // günlük hediye ve görevler
+    var readyQ = 0, ql = $('questList'); ql.innerHTML = '';
+    var gr = giftReady(), gs = nextStreak(), ga = giftAmount(gs);
+    var grow = document.createElement('div'); grow.className = 'row' + (gr ? ' ready' : '');
+    grow.innerHTML = '<div class="row-t"><b>Günlük hediye' + (gr ? '<em class="tag">Hazır</em>' : '') + '</b><span>' + (gr ? 'Bugünkü ödül ' + ga + ' damla · seri ' + gs + '. gün' : 'Seri ' + st.daily.streak + ' gün. Yarın tekrar gel.') + '</span></div><button class="buy" data-gift="1"' + (gr ? '' : ' disabled') + '>' + (gr ? 'Al · ' + ga : 'Alındı') + '</button>';
+    ql.appendChild(grow); if (gr) readyQ++;
+    st.quests.forEach(function (q, idx) {
+      var done = q.p >= q.n; if (done) readyQ++;
+      var row = document.createElement('div'); row.className = 'row';
+      row.innerHTML = '<div class="row-t"><b>' + qText(q) + '</b><span>' + q.p + ' / ' + q.n + '</span><div class="bar"><i style="width:' + (q.p / q.n * 100) + '%"></i></div></div><button class="buy" data-q="' + idx + '"' + (done ? '' : ' disabled') + '>' + (done ? 'Al · ' + Math.round(q.r * luckF()) : 'Devam') + '</button>';
+      ql.appendChild(row);
+    });
+    $('tabQuests').textContent = 'Görevler' + (readyQ ? ' (' + readyQ + ')' : '');
+
+    $('stats').innerHTML = '<div class="stat"><b>' + st.stats.blooms + '</b><span>Açan çiçek</span></div><div class="stat"><b>' + st.stats.maxTier + '</b><span>En yüksek kademe</span></div><div class="stat"><b>' + st.rainbows + '</b><span>Gökkuşağı</span></div><div class="stat"><b>' + st.stats.earned + '</b><span>Toplam damla</span></div><div class="stat"><b>' + (st.stats.bestCombo || 0) + '</b><span>En iyi kombo</span></div><div class="stat"><b>' + fmtTime(st.stats.sec) + '</b><span>Oynama süresi</span></div>';
+    var bl = $('badgeList'); bl.innerHTML = '';
+    BADGES.forEach(function (b) {
+      var on = !!st.badges[b.id], row = document.createElement('div'); row.className = 'row badge-row' + (on ? '' : ' off');
+      row.innerHTML = '<div class="row-t"><b>' + b.name + '</b><span>' + b.desc + ' · ' + b.r + ' damla</span></div><span class="badge-mark" aria-label="' + (on ? 'Kazanıldı' : 'Kilitli') + '">' + (on ? '✓' : '') + '</span>';
+      bl.appendChild(row);
+    });
+
+    document.querySelectorAll('.seg').forEach(function (seg) {
+      var key = seg.getAttribute('data-set');
+      seg.querySelectorAll('button').forEach(function (b) { b.setAttribute('aria-pressed', String(st.set[key] === b.getAttribute('data-v'))); });
+    });
+    $('diffNote').textContent = D().note;
+    $('thDusk').textContent = THEME_NAME.dusk + (st.set.owned.dusk ? '' : ' · ' + THEME_COST.dusk);
+    $('thNight').textContent = THEME_NAME.night + (st.set.owned.night ? '' : ' · ' + THEME_COST.night);
+    $('vol').value = st.set.vol; $('motion').checked = motionReduced();
+  }
+
+  /* ---------- tıklamalar ---------- */
+  var tabNames = ['ups', 'quests', 'badges', 'set'];
+  function openTab(t) {
+    var b = $('tabs').querySelector('[data-tab=' + t + ']'); if (!b) return;
+    tabNames.forEach(function (n) { $('panel-' + n).hidden = n !== t; });
+    $('tabs').querySelectorAll('button').forEach(function (x) { x.setAttribute('aria-selected', String(x === b)); });
+    $('panel-' + t).scrollIntoView({ behavior: motionReduced() ? 'auto' : 'smooth', block: 'start' });
+  }
+  $('tabs').addEventListener('click', function (e) {
+    var b = e.target.closest('button[data-tab]'); if (!b) return;
+    var t = b.getAttribute('data-tab');
+    tabNames.forEach(function (n) { $('panel-' + n).hidden = n !== t; });
+    $('tabs').querySelectorAll('button').forEach(function (x) { x.setAttribute('aria-selected', String(x === b)); });
+  });
+  $('goldChip').addEventListener('click', function () { openTab('ups'); });
+  $('toastX').addEventListener('click', hideToast);
+  $('toastGo').addEventListener('click', function () { hideToast(); openTab(toastTab); });
+  upsEl.addEventListener('click', function (e) {
+    var b = e.target.closest('button[data-up]'); if (!b || b.disabled) return;
+    var id = b.getAttribute('data-up');
+    var u = UPS.filter(function (x) { return x.id === id; })[0];
+    if (!u || st.up[id] >= MAXLV || st.gold < upCost(u)) return;
+    st.gold -= upCost(u); st.up[id]++;
+    say(u.name + ' seviye ' + st.up[id] + ' oldu!');
+    buySound(); updateUI(); save();
+  });
+  $('questList').addEventListener('click', function (e) {
+    var g = e.target.closest('button[data-gift]');
+    if (g) {
+      if (!giftReady()) return;
+      var s = nextStreak(), amt = giftAmount(s);
+      st.daily = { last: today(), streak: s }; earn(amt);
+      say('Günlük hediye: +' + amt + ' damla · seri ' + s + '. gün'); buySound(); updateUI(); save();
+      return;
+    }
+    var b = e.target.closest('button[data-q]'); if (!b || b.disabled) return;
+    var i = +b.getAttribute('data-q'), q = st.quests[i];
+    if (!q || q.p < q.n) return;
+    var r = Math.round(q.r * luckF());
+    earn(r); st.quests[i] = newQuest();
+    say('Görev tamam! +' + r + ' damla'); buySound(); updateUI(); save();
+  });
+  abilEl.addEventListener('click', function (e) {
+    var b = e.target.closest('button[data-ab]'); if (!b || b.disabled) return;
+    useAbility(b.getAttribute('data-ab'));
+  });
+  document.querySelectorAll('.seg').forEach(function (seg) {
+    seg.addEventListener('click', function (e) {
+      var b = e.target.closest('button'); if (!b) return;
+      var key = seg.getAttribute('data-set'), v = b.getAttribute('data-v');
+      if (key === 'theme' && !st.set.owned[v]) {
+        if (st.gold < THEME_COST[v]) { say('Bu gökyüzü için ' + THEME_COST[v] + ' damla lazım.'); return; }
+        st.gold -= THEME_COST[v]; st.set.owned[v] = true; buySound(); say(THEME_NAME[v] + ' gökyüzü açıldı!');
+      }
+      st.set[key] = v; updateUI(); save();
+    });
+  });
+  $('vol').addEventListener('input', function (e) { st.set.vol = +e.target.value; });
+  $('vol').addEventListener('change', function () { save(); tone(784, 0.2, 0, 'triangle', 0.12); });
+  $('motion').addEventListener('change', function (e) { st.set.motion = e.target.checked; save(); });
+  var resetArmed = false, resetTimer = null;
+  $('resetBtn').addEventListener('click', function (e) {
+    var b = e.currentTarget;
+    if (!resetArmed) {
+      resetArmed = true; b.textContent = 'Emin misin? Tekrar dokun';
+      resetTimer = setTimeout(function () { resetArmed = false; b.textContent = 'Tüm ilerlemeyi sıfırla'; }, 4000);
+    } else {
+      clearTimeout(resetTimer);
+      try { localStorage.removeItem(SAVE); } catch (er) {}
+      location.reload();
+    }
+  });
+
+  function burst(x, y, color, n, kind) {
+    var cnt = motionReduced() ? Math.ceil(n / 2) : n;
+    for (var i = 0; i < cnt; i++) {
+      var a = Math.random() * Math.PI * 2, sp = rnd(40, 170);
+      parts.push({ x: x, y: y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 60, life: 0, max: rnd(0.6, 1.3), col: color || HEX[KEYS[Math.floor(Math.random() * 6)]], r: rnd(2, 4.5), kind: kind || 'spark', rot: Math.random() * 6 });
+    }
+  }
+
+  function useAbility(id) {
+    var a = ABIL.filter(function (x) { return x.id === id; })[0];
+    if (!a || cdLeft[id] > 0) return;
+    ac();
+    if (id === 'sun') {
+      var pending = seeds.filter(function (s) { return !s.done; });
+      if (!pending.length) { say('Su verilecek tohum kalmadı.'); return; }
+      pending.forEach(function (s) {
+        s.idle = 0;
+        s.need.forEach(function (k) { s.fill[k] = Math.min(1, s.fill[k] + 0.3); });
+        burst(s.x, s.y - 20, '#ffe27a', 10);
+        if (s.need.every(function (k) { return s.fill[k] >= 1; })) bloom(s);
+      });
+      sunFlash = 0.6; say('Güneş dalgası! Tohumlar ısındı.');
+      tone(880, 0.3, 0, 'triangle', 0.12); tone(1175, 0.4, 0.1, 'triangle', 0.12);
+    } else if (id === 'herd') {
+      clouds.forEach(function (c) { c.water = 1; c.dryMark = false; c.wasLow = false; burst(c.x, c.y, '#9bd8ff', 8); });
+      say('Bulut sürüsü yenilendi!'); splashSound();
+    } else {
+      calmT = 20; say('Dinginlik: 20 saniye rüzgar yok, bulutlar yarı hızda su harcıyor.');
+      tone(523, 0.4, 0, 'sine', 0.1); tone(659, 0.5, 0.15, 'sine', 0.1);
+    }
+    cdLeft[id] = cdFull(a); updateAbil();
+  }
+
+  /* ---------- giriş ---------- */
+  function pos(e) { var r = cv.getBoundingClientRect(); return { x: (e.clientX - r.left) / r.width * W, y: (e.clientY - r.top) / r.height * H }; }
+  cv.addEventListener('pointerdown', function (e) {
+    e.preventDefault(); ac();
+    var p = pos(e), best = null, bd = 60;
+    clouds.forEach(function (c) { if (c.holder !== null) return; var d = Math.hypot(c.x - p.x, c.y - p.y); if (d < bd) { bd = d; best = c; } });
+    if (best) { best.holder = e.pointerId; best.dx = best.x - p.x; best.dy = best.y - p.y; best.tx = best.x; best.ty = best.y; try { cv.setPointerCapture(e.pointerId); } catch (er) {} }
+  });
+  cv.addEventListener('pointermove', function (e) {
+    clouds.forEach(function (c) { if (c.holder === e.pointerId) { var p = pos(e); c.tx = p.x + c.dx; c.ty = p.y + c.dy; } });
+  });
+  function release(e) { clouds.forEach(function (c) { if (c.holder === e.pointerId) c.holder = null; }); }
+  cv.addEventListener('pointerup', release);
+  cv.addEventListener('pointercancel', release);
+
+  /* ---------- güncelle ---------- */
+  function bloom(s) {
+    s.done = true; s.t = 0;
+    var firstTime = !st.found[s.key];
+    st.found[s.key] = true;
+    st.stats.blooms++; questAdd('any', null, 1); questAdd('key', s.key, 1);
+    combo = comboT > 0 ? combo + 1 : 1; comboT = 7;
+    if (combo > (st.stats.bestCombo || 0)) st.stats.bestCombo = combo;
+    var cm = 1 + 0.2 * Math.min(combo - 1, 5);
+    var reward = money((1 + Math.floor((st.garden - 1) / 4)) * (isBoss() ? 3 : 1) * cm);
+    earn(reward);
+    burst(s.x, s.y - 30, HEX[s.key], 22);
+    bloomSound();
+    if (flies.length < 8) flies.push({ x: s.x, y: s.y - 40, ph: Math.random() * 6, col: HEX[s.key], cx: s.x });
+    say((firstTime ? NAMES[s.key] + ' çiçek bulundu! ' : NAMES[s.key] + ' çiçek açtı! ') + '+' + reward + ' damla' + (combo >= 2 ? ' · kombo ×' + combo : ''));
+    if (seeds.every(function (x) { return x.done; }) && gardenTimer <= 0) {
+      gardenTimer = 2.4; st.stats.tiers++; questAdd('tier', null, 1);
+      var bonus = money((2 + Math.floor(st.garden / 3)) * (isBoss() ? 3 : 1));
+      earn(bonus);
+      say('Kademe ' + st.garden + ' tamam! Bonus +' + bonus + ' damla');
+    }
+    if (Object.keys(st.found).length >= 6 && rainbowT <= 0) {
+      rainbowT = 5.2; st.rainbows++; earn(6); fanfare(); say('Gökkuşağı! Bütün renkleri buldun! +6 damla');
+      for (var i = 0; i < 4; i++) burst(rnd(60, 300), rnd(80, 220), null, 14, 'confetti');
+    }
+    updateUI(); save();
+  }
+
+  function pickEvent() {
+    var pool = GEV.filter(function (e) { return st.garden >= e.min && (e.id !== 'gust' || windStr() > 0); });
+    return pool.length ? pool[Math.floor(Math.random() * pool.length)] : null;
+  }
+
+  function update(dt) {
+    tAll += dt; st.stats.sec += dt;
+    if (bannerT > 0) bannerT -= dt;
+    if (sunFlash > 0) sunFlash -= dt;
+    if (calmT > 0) calmT -= dt;
+    if (comboT > 0) { comboT -= dt; if (comboT <= 0) combo = 0; }
+    ABIL.forEach(function (a) { if (cdLeft[a.id] > 0) cdLeft[a.id] = Math.max(0, cdLeft[a.id] - dt); });
+    abilTick += dt; if (abilTick > 0.25) { abilTick = 0; updateAbil(); }
+
+    if (ev) {
+      ev.left -= dt;
+      if (ev.left <= 0) { ev = null; evNext = rnd(55, 90); }
+    } else if (st.garden >= 2) {
+      evNext -= dt;
+      if (evNext <= 0) {
+        var d0 = pickEvent();
+        if (d0) {
+          ev = { def: d0, left: d0.dur }; bannerT = 3.2; bannerTitle = d0.name; bannerSub = d0.sub;
+          say(d0.name + ': ' + d0.sub); if (d0.good) buySound(); else warnSound();
+        } else evNext = 30;
+      }
+    }
+
+    var wind = windNow();
+    clouds.forEach(function (c) {
+      if (c.holder !== null) {
+        var f = Math.min(1, dt * 14);
+        c.x += (c.tx - c.x) * f; c.y += (c.ty - c.y) * f;
+      } else if (c.y < 488) {
+        c.x += c.vx * dt;
+        if (c.x < 45) { c.x = 45; c.vx = Math.abs(c.vx); }
+        if (c.x > W - 45) { c.x = W - 45; c.vx = -Math.abs(c.vx); }
+        if (st.up.idle > 0 && c.water < 1) c.water = Math.min(1, c.water + 0.05 * st.up.idle * dt);
+      }
+      c.x = Math.max(45, Math.min(W - 45, c.x));
+      c.y = Math.max(45, Math.min(520, c.y));
+      var inSea = c.y >= 488;
+      if (inSea && c.water < 1) {
+        c.water = Math.min(1, c.water + refillRate() * dt);
+        if (Math.random() < dt * 10) burst(c.x + rnd(-20, 20), SEA, '#9bd8ff', 1, 'bubble');
+        if (c.water >= 1) {
+          splashSound(); c.wasLow = false;
+          if (c.dryMark) { c.dryMark = false; st.stats.refills++; questAdd('refill', null, 1); updateUI(); save(); }
+        }
+      }
+      if (c.holder !== null && !inSea && c.water > 0 && c.y < 400) {
+        c.water = Math.max(0, c.water - drainRate() * dt);
+        if (c.water < 0.5) c.dryMark = true;
+        c.acc += dt * 16;
+        var sp = spread();
+        while (c.acc >= 1) { c.acc -= 1; drops.push({ x: c.x + rnd(-sp, sp), y: c.y + 24, vy: rnd(230, 290), col: c.col }); }
+        if (c.water === 0 && !c.wasLow) { c.wasLow = true; say('Bulut susadı. Onu denize götür!'); }
+      }
+    });
+    var R = hitR();
+    for (var i = drops.length - 1; i >= 0; i--) {
+      var d = drops[i]; d.y += d.vy * dt; d.x += wind * dt;
+      var gone = false;
+      if (d.y >= 425 && d.y < 475) {
+        var candN = null, bestN = 1e9, candA = null, bestA = 1e9;
+        seeds.forEach(function (s) {
+          if (s.done) return;
+          var dd = Math.abs(d.x - s.x);
+          if (dd >= R) return;
+          if (s.need.indexOf(d.col) >= 0 && s.fill[d.col] < 1) { if (dd < bestN) { bestN = dd; candN = s; } }
+          else if (dd < bestA) { bestA = dd; candA = s; }
+        });
+        if (candN) {
+          candN.fill[d.col] = Math.min(1, candN.fill[d.col] + fillPer());
+          candN.idle = 0;
+          burst(d.x, d.y, HEX[d.col], 1, 'spark');
+          if (candN.need.every(function (c) { return candN.fill[c] >= 1; })) bloom(candN);
+          gone = true;
+        } else if (candA) { burst(d.x, d.y, '#ffffff', 1, 'spark'); gone = true; }
+      }
+      if (gone || d.y > GROUND + 50 || d.x < -20 || d.x > W + 20) drops.splice(i, 1);
+    }
+    var dec = decayRate();
+    seeds.forEach(function (s) {
+      if (s.done) { s.t += dt; return; }
+      s.idle += dt;
+      if (s.idle > 3 && dec > 0) s.need.forEach(function (k) { s.fill[k] = Math.max(0, s.fill[k] - dec * dt); });
+    });
+    if (gardenTimer > 0) {
+      gardenTimer -= dt;
+      if (gardenTimer <= 0) {
+        st.garden++; drops.length = 0; newGarden(); updateUI(); save();
+        say('Kademe ' + st.garden + ': ' + tierNote());
+        for (var k = 0; k < 3; k++) burst(rnd(40, 320), GROUND, null, 8);
+      }
+    }
+    if (rainbowT > 0) { rainbowT -= dt; if (rainbowT <= 0) { st.found = {}; updateUI(); save(); } }
+    flies.forEach(function (f) { f.ph += dt * 2; f.x = f.cx + Math.sin(f.ph * 0.7) * 50; f.y = 330 + Math.sin(f.ph * 1.3) * 50 + Math.cos(f.ph * 0.5) * 20; });
+    for (var p = parts.length - 1; p >= 0; p--) {
+      var q = parts[p]; q.life += dt;
+      if (q.life > q.max) { parts.splice(p, 1); continue; }
+      q.x += q.vx * dt; q.y += q.vy * dt;
+      q.vy += (q.kind === 'bubble' ? -40 : 260) * dt; q.vx *= 0.99;
+    }
+  }
+
+  /* ---------- çizim ---------- */
+  function circle(x, y, r) { ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); }
+  function drawDrop(x, y, r, col) {
+    ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(x, y - r * 1.5); ctx.quadraticCurveTo(x + r * 1.1, y, x, y + r * 0.9); ctx.quadraticCurveTo(x - r * 1.1, y, x, y - r * 1.5); ctx.fill();
+  }
+
+  var THEMES = {
+    day: { top: '#74c6ff', bot: '#d9f3ff', sun: '#ffd23f', ray: '#ffe27a', hill: '#a5e3b0' },
+    dusk: { top: '#6b4fc0', bot: '#ffc58a', sun: '#ff9f45', ray: '#ffc27a', hill: '#8fbf9a' },
+    night: { top: '#0e1a3e', bot: '#34508f', hill: '#3d7f66' }
+  };
+  function drawBackground() {
+    var th = THEMES[st.set.theme] || THEMES.day, still = motionReduced();
+    var g = ctx.createLinearGradient(0, 0, 0, GROUND);
+    g.addColorStop(0, th.top); g.addColorStop(1, th.bot);
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    var sx = 306, sy = 58;
+    if (st.set.theme === 'night') {
+      STARS.forEach(function (s) { ctx.globalAlpha = still ? 0.8 : 0.5 + 0.5 * Math.sin(tAll * 2 + s.ph); ctx.fillStyle = '#fff'; circle(s.x, s.y, s.r); });
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = '#f6f1d3'; circle(sx, sy, 26);
+      ctx.fillStyle = 'rgba(190,180,140,0.45)'; circle(sx - 8, sy - 6, 5); circle(sx + 9, sy + 8, 4); circle(sx + 6, sy - 11, 3);
+    } else {
+      ctx.save(); ctx.translate(sx, sy); if (!still) ctx.rotate(tAll * 0.15);
+      ctx.fillStyle = th.ray;
+      for (var i = 0; i < 12; i++) { ctx.rotate(Math.PI / 6); ctx.beginPath(); ctx.moveTo(-4, -34); ctx.lineTo(0, -46); ctx.lineTo(4, -34); ctx.fill(); }
+      ctx.restore();
+      ctx.fillStyle = (ev && ev.def.id === 'heat') ? '#ff7a3d' : th.sun; circle(sx, sy, 28);
+      ctx.fillStyle = '#7a4a00'; circle(sx - 9, sy - 4, 2.5); circle(sx + 9, sy - 4, 2.5);
+      ctx.strokeStyle = '#7a4a00'; ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.beginPath(); ctx.arc(sx, sy + 3, 10, 0.2, Math.PI - 0.2); ctx.stroke();
+    }
+    ctx.fillStyle = th.hill; ctx.beginPath(); ctx.moveTo(0, GROUND); ctx.quadraticCurveTo(70, 340, 150, GROUND); ctx.quadraticCurveTo(230, 350, 320, GROUND); ctx.lineTo(360, GROUND); ctx.lineTo(360, GROUND + 4); ctx.lineTo(0, GROUND + 4); ctx.fill();
+  }
+  function drawRainbow() {
+    if (rainbowT <= 0) return;
+    var p = Math.min(1, (5.2 - rainbowT) / 1.2), a = Math.min(1, rainbowT / 1);
+    var cols = ['#ff5f6d', '#ff9a4d', '#ffd23f', '#5fd47f', '#5bb8ff', '#b185ff'];
+    ctx.save(); ctx.globalAlpha = a; ctx.lineWidth = 12; ctx.lineCap = 'butt';
+    cols.forEach(function (c, i) { ctx.strokeStyle = c; ctx.beginPath(); ctx.arc(180, GROUND + 10, 190 - i * 12, Math.PI, Math.PI + Math.PI * p); ctx.stroke(); });
+    ctx.restore();
+  }
+  function drawGround() {
+    ctx.fillStyle = (ev && ev.def.id === 'dry') ? '#c9c276' : '#7ad18a'; ctx.fillRect(0, GROUND, W, SEA - GROUND);
+    ctx.fillStyle = (ev && ev.def.id === 'dry') ? '#b8b165' : '#69c47a'; ctx.fillRect(0, GROUND, W, 6);
+    ctx.fillStyle = '#3ea6e8'; ctx.fillRect(0, SEA, W, H - SEA);
+    ctx.strokeStyle = '#8fd3ff'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+    for (var r = 0; r < 2; r++) {
+      ctx.beginPath();
+      for (var x = 0; x <= W; x += 8) { var y = SEA + 10 + r * 22 + Math.sin(x / 22 + tAll * 2 + r * 2) * 4; if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y); }
+      ctx.stroke();
+    }
+    [90, 180, 270].forEach(function (x) { drawDrop(x, SEA + 34, 7, 'rgba(255,255,255,0.8)'); });
+    if (st.set.theme === 'night') { ctx.fillStyle = 'rgba(8,16,50,0.28)'; ctx.fillRect(0, GROUND, W, H - GROUND); }
+    else if (st.set.theme === 'dusk') { ctx.fillStyle = 'rgba(255,140,60,0.12)'; ctx.fillRect(0, GROUND, W, H - GROUND); }
+  }
+
+  function drawWind() {
+    var ws = windStr(); if (ws <= 0) return;
+    var w = windNow(), len = Math.max(-34, Math.min(34, w / 70 * 30));
+    ctx.save();
+    ctx.font = '700 11px "Nunito", system-ui, sans-serif'; ctx.textAlign = 'left'; ctx.fillStyle = 'rgba(255,255,255,0.95)';
+    ctx.fillText(calmT > 0 ? 'Rüzgar durdu' : 'Rüzgar', 12, 22);
+    ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+    var x0 = 36, y0 = 36;
+    ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x0 + len, y0); ctx.stroke();
+    if (Math.abs(len) > 3) { var dir = len > 0 ? 1 : -1; ctx.beginPath(); ctx.moveTo(x0 + len - dir * 6, y0 - 5); ctx.lineTo(x0 + len, y0); ctx.lineTo(x0 + len - dir * 6, y0 + 5); ctx.stroke(); }
+    ctx.restore();
+  }
+
+  function drawSeed(s) {
+    var tot = s.need.reduce(function (a, c) { return a + s.fill[c]; }, 0) / s.need.length;
+    var wilt = !s.done && s.idle > 3 && tot > 0 && decayRate() > 0;
+    ctx.fillStyle = '#8a5a3a'; ctx.beginPath(); ctx.ellipse(s.x, s.y + 14, 28, 11, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#a06c47'; ctx.beginPath(); ctx.ellipse(s.x, s.y + 11, 24, 8, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = wilt ? '#a8a24a' : '#3fae5b'; ctx.fillStyle = wilt ? '#a8a24a' : '#3fae5b'; ctx.lineCap = 'round';
+    if (!s.done) {
+      var h = 4 + 22 * tot;
+      ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(s.x, s.y + 10); ctx.lineTo(s.x + (wilt ? 3 : 0), s.y + 10 - h); ctx.stroke();
+      if (tot > 0.05) {
+        var dr = wilt ? 4 : 0;
+        ctx.beginPath(); ctx.ellipse(s.x - 7, s.y + 8 - h + dr, 7, 3.5, -0.5 + (wilt ? 0.6 : 0), 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(s.x + 7, s.y + 8 - h + dr, 7, 3.5, 0.5 + (wilt ? 0.6 : 0), 0, Math.PI * 2); ctx.fill();
+      }
+    } else {
+      var b = easeOutBack(Math.min(1, s.t / 0.9)), sway = Math.sin(tAll * 2 + s.x) * 2 * Math.min(1, s.t);
+      var top = s.y + 10 - 46 * b;
+      ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(s.x, s.y + 10); ctx.quadraticCurveTo(s.x + sway, s.y - 14, s.x + sway, top); ctx.stroke();
+      ctx.beginPath(); ctx.ellipse(s.x - 9, s.y - 6, 9, 4, -0.5, 0, Math.PI * 2); ctx.fill();
+      var cx = s.x + sway, R = 17 * b;
+      ctx.fillStyle = HEX[s.key];
+      for (var i = 0; i < 7; i++) { var a = i / 7 * Math.PI * 2 + tAll * 0.3; circle(cx + Math.cos(a) * R * 0.95, top + Math.sin(a) * R * 0.95, R * 0.6); }
+      ctx.fillStyle = '#ffe27a'; circle(cx, top, R * 0.62);
+      ctx.fillStyle = '#7a4a00'; circle(cx - R * 0.22, top - R * 0.08, R * 0.08 + 0.4); circle(cx + R * 0.22, top - R * 0.08, R * 0.08 + 0.4);
+      ctx.strokeStyle = '#7a4a00'; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.arc(cx, top + R * 0.08, R * 0.24, 0.2, Math.PI - 0.2); ctx.stroke();
+    }
+  }
+  function drawBubble(s) {
+    if (s.done) return;
+    var n = s.need.length, w = n === 1 ? 46 : 80, x0 = s.x - w / 2, h = 46, y0 = s.y - 100 - s.row * 54;
+    ctx.fillStyle = 'rgba(255,255,255,0.94)';
+    ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(x0, y0, w, h, 23); else ctx.rect(x0, y0, w, h); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(s.x - 7, y0 + h - 1); ctx.lineTo(s.x, y0 + h + 9); ctx.lineTo(s.x + 7, y0 + h - 1); ctx.fill();
+    if (s.row) { ctx.strokeStyle = 'rgba(255,255,255,0.6)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(s.x, y0 + h + 9); ctx.lineTo(s.x, s.y - 34); ctx.stroke(); }
+    s.need.forEach(function (c, i) {
+      var cx = n === 1 ? s.x : s.x - 18 + i * 36, cy = y0 + h / 2;
+      ctx.lineWidth = 5; ctx.lineCap = 'round';
+      ctx.strokeStyle = '#e4eef7'; ctx.beginPath(); ctx.arc(cx, cy, 15, 0, Math.PI * 2); ctx.stroke();
+      if (s.fill[c] > 0) { ctx.strokeStyle = HEX[c]; ctx.beginPath(); ctx.arc(cx, cy, 15, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * s.fill[c]); ctx.stroke(); }
+      drawDrop(cx, cy + 2, 6.5, HEX[c]);
+    });
+  }
+
+  function drawFace(c, held, wet) {
+    var face = st.set.face, ink = '#2b3a55';
+    ctx.strokeStyle = ink; ctx.lineWidth = 2.2; ctx.lineCap = 'round';
+    if (face === 'sleepy') {
+      ctx.beginPath(); ctx.arc(-10, 1, 3.6, 0.15, Math.PI - 0.15); ctx.stroke();
+      ctx.beginPath(); ctx.arc(10, 1, 3.6, 0.15, Math.PI - 0.15); ctx.stroke();
+    } else if (face === 'cool') {
+      ctx.fillStyle = ink; ctx.fillRect(-18, -5, 14, 8); ctx.fillRect(4, -5, 14, 8);
+      ctx.beginPath(); ctx.moveTo(-4, -2); ctx.lineTo(4, -2); ctx.stroke();
+      ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.fillRect(-16, -4, 4, 2); ctx.fillRect(6, -4, 4, 2);
+    } else {
+      ctx.fillStyle = ink; circle(-10, 0, 3); circle(10, 0, 3);
+    }
+    ctx.fillStyle = 'rgba(255,111,145,0.55)'; circle(-19, 8, 4); circle(19, 8, 4);
+    ctx.strokeStyle = ink; ctx.lineWidth = 2.2;
+    if (wet < 0.08) { ctx.beginPath(); ctx.arc(0, 14, 6, Math.PI + 0.4, -0.4); ctx.stroke(); }
+    else if (held && c.y < 400) { ctx.fillStyle = ink; ctx.beginPath(); ctx.ellipse(0, 9, 4.5, 5.5, 0, 0, Math.PI * 2); ctx.fill(); }
+    else { ctx.beginPath(); ctx.arc(0, 6, 7, 0.25, Math.PI - 0.25); ctx.stroke(); }
+  }
+
+  function drawCloud(c) {
+    var held = c.holder !== null, wet = c.water;
+    var body = mix('#c9d3de', HEX[c.col], 0.35 + 0.65 * wet);
+    var bob = (held || motionReduced()) ? 0 : Math.sin(tAll * 1.5 + c.x * 0.05) * 2;
+    var sc = (held ? 1.06 : 1) * (1 + 0.03 * (st.up.power + st.up.tank));
+    ctx.save(); ctx.translate(c.x, c.y + bob); ctx.scale(sc, sc);
+    ctx.fillStyle = 'rgba(0,0,0,0.10)'; ctx.beginPath(); ctx.ellipse(2, 12, 42, 14, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = body;
+    ctx.beginPath(); ctx.arc(-26, 4, 18, 0, Math.PI * 2); ctx.arc(-8, -8, 24, 0, Math.PI * 2); ctx.moveTo(36, -4); ctx.arc(14, -4, 22, 0, Math.PI * 2); ctx.moveTo(46, 6); ctx.arc(30, 6, 16, 0, Math.PI * 2); ctx.fill();
+    ctx.fillRect(-30, 6, 62, 16);
+    ctx.beginPath(); ctx.arc(-30, 14, 8, 0, Math.PI * 2); ctx.arc(32, 14, 8, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.beginPath(); ctx.ellipse(-4, -16, 14, 6, -0.3, 0, Math.PI * 2); ctx.fill();
+    drawFace(c, held, wet);
+    if (wet < 0.995 || held) {
+      ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.fillRect(-22, 30, 44, 6);
+      ctx.fillStyle = HEX[c.col]; ctx.fillRect(-22, 30, 44 * wet, 6);
+    }
+    ctx.restore();
+  }
+
+  function drawFly(f) {
+    var w = Math.abs(Math.sin(tAll * 12 + f.ph)) * 7 + 2;
+    ctx.fillStyle = f.col;
+    ctx.beginPath(); ctx.ellipse(f.x - 4, f.y, w, 6, -0.4, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(f.x + 4, f.y, w, 6, 0.4, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#2b3a55'; ctx.fillRect(f.x - 1, f.y - 4, 2, 8);
+  }
+
+  function drawParts() {
+    parts.forEach(function (q) {
+      ctx.globalAlpha = Math.max(0, 1 - q.life / q.max);
+      if (q.kind === 'confetti') { ctx.save(); ctx.translate(q.x, q.y); ctx.rotate(q.rot + q.life * 6); ctx.fillStyle = q.col; ctx.fillRect(-q.r, -q.r / 2, q.r * 2, q.r); ctx.restore(); }
+      else if (q.kind === 'bubble') { ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(q.x, q.y, q.r, 0, Math.PI * 2); ctx.stroke(); }
+      else { ctx.fillStyle = q.col; circle(q.x, q.y, q.r); }
+    });
+    ctx.globalAlpha = 1;
+  }
+
+  function pill(x, y, text, bg) {
+    ctx.save();
+    ctx.font = '800 12px "Nunito", system-ui, sans-serif';
+    var w = ctx.measureText(text).width + 22;
+    ctx.fillStyle = bg;
+    ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(x - w / 2, y - 12, w, 24, 12); else ctx.rect(x - w / 2, y - 12, w, 24); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.fillText(text, x, y + 4);
+    ctx.restore();
+  }
+  function drawHUD() {
+    var y = 18;
+    if (ev) { pill(170, y, ev.def.name + ' · ' + Math.ceil(ev.left) + ' sn', ev.def.good ? '#3fae5b' : '#e0783a'); y += 28; }
+    if (calmT > 0) { pill(170, y, 'Dinginlik · ' + Math.ceil(calmT) + ' sn', '#4a9fe0'); y += 28; }
+    if (combo >= 2) { pill(170, y, 'Kombo ×' + combo + ' · +' + (Math.min(combo - 1, 5) * 20) + '%', '#ff6f91'); }
+  }
+
+  function drawOverlay() {
+    if (sunFlash > 0) { ctx.fillStyle = 'rgba(255,240,170,' + (sunFlash * 0.55) + ')'; ctx.fillRect(0, 0, W, H); }
+    if (bannerT <= 0) return;
+    var a = Math.max(0, Math.min(1, (3.2 - bannerT) / 0.25, bannerT / 0.6));
+    ctx.save(); ctx.globalAlpha = a;
+    var w = 290, h = 66, x = (W - w) / 2, y = 245;
+    ctx.fillStyle = 'rgba(255,255,255,0.96)';
+    ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(x, y, w, h, 18); else ctx.rect(x, y, w, h); ctx.fill();
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#1d3b63'; ctx.font = '800 24px "Baloo 2", system-ui, sans-serif'; ctx.fillText(bannerTitle, W / 2, y + 30);
+    ctx.fillStyle = '#5d7a9e'; ctx.font = '700 12px "Nunito", system-ui, sans-serif'; ctx.fillText(bannerSub, W / 2, y + 52, w - 16);
+    ctx.restore();
+  }
+
+  function draw() {
+    drawBackground(); drawRainbow(); drawGround(); drawWind();
+    seeds.forEach(drawSeed);
+    flies.forEach(drawFly);
+    drops.forEach(function (d) { drawDrop(d.x, d.y, 4, HEX[d.col]); });
+    clouds.slice().sort(function (a, b) { return a.y - b.y; }).forEach(drawCloud);
+    seeds.forEach(drawBubble);
+    drawParts(); drawHUD(); drawOverlay();
+  }
+
+  /* ---------- başlat ---------- */
+  buildUps(); newGarden(); updateUI(); updateAbil();
+  if (giftReady()) { say('Günlük hediyen hazır! Görevler sekmesinden al.'); showToast('Günlük hediye hazır!', 'Görevler sekmesinden ödülünü al.', 'quests'); }
+  else say('Bir bulutu sürükle ve susayan çiçeklere yağmur yağdır. Su bitince bulutu denize götür.');
+  var last = performance.now(), saveAcc = 0;
+  function frame(now) {
+    var dt = Math.min(0.05, (now - last) / 1000); last = now;
+    update(dt); draw();
+    saveAcc += dt; if (saveAcc > 15) { saveAcc = 0; save(); }
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
+
+</body>
+</html>
