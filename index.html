@@ -74,6 +74,18 @@ canvas {
 
 .tabs { position: fixed; z-index: 40; left: 50%; transform: translateX(-50%); bottom: calc(env(safe-area-inset-bottom, 0px) + 8px); width: min(460px, calc(100% - 32px)); display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; background: var(--card); border: 2px solid var(--line); border-radius: 16px; padding: 4px; box-shadow: 0 6px 20px rgba(29,59,99,0.25); }
 .cprev { flex: none; width: 76px; height: 60px; border-radius: 12px; background: var(--soft); }
+#prestigeBox .row { padding-bottom: 10px; border-bottom: 2px solid var(--soft); }
+.sec-h { font-family: var(--font-display); font-weight: 800; font-size: 17px; margin: 10px 0 0; }
+.ms { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.ms button { min-height: 44px; padding: 6px 10px; border-radius: 12px; border: 0; background: var(--pink); color: #fff; font: 800 13px var(--font-display); cursor: pointer; }
+.ms button:disabled { background: #dcecf8; color: #8aa5c0; cursor: not-allowed; }
+.adot { flex: none; width: 22px; height: 22px; border-radius: 50%; box-shadow: 0 0 0 3px #fff, 0 0 0 5px var(--line); margin: 0 4px; }
+.welcome { position: fixed; inset: 0; z-index: 70; display: grid; place-items: center; background: rgba(29,59,99,0.5); padding: 16px; }
+.welcome-card { background: var(--card); border-radius: 24px; padding: 22px 20px; width: min(360px, 100%); text-align: center; display: flex; flex-direction: column; gap: 10px; align-items: center; box-shadow: 0 16px 40px rgba(0,0,0,0.3); animation: popIn 0.45s cubic-bezier(0.2, 1.4, 0.4, 1); }
+.welcome-card h2 { font-family: var(--font-display); font-weight: 800; font-size: 26px; margin: 0; }
+.welcome-card p { margin: 0; color: var(--muted); }
+@keyframes popIn { from { transform: scale(0.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.calm .welcome-card { animation: none; }
 .backdrop { position: fixed; inset: 0; z-index: 38; background: rgba(29,59,99,0.3); }
 .tabs button { min-height: 44px; border: 0; border-radius: 12px; background: transparent; color: var(--muted); font: 700 12px var(--font-body); cursor: pointer; padding: 4px 0; }
 .tabs button[aria-selected="true"] { background: var(--pink); color: #fff; }
@@ -136,6 +148,7 @@ canvas {
     <h1>Bulut Çobanı</h1>
     <div class="chips">
       <span class="chip" id="tierChip">Kademe 1</span>
+      <span class="chip" id="gpChip" hidden></span>
       <button class="chip" id="goldChip" aria-label="Yükseltmelere git">Damla 0</button>
       <button class="sound" id="sound" aria-pressed="false" aria-label="Sesi aç veya kapat">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M17 9a4 4 0 0 1 0 6"/><path d="M19.5 6.5a8 8 0 0 1 0 11"/></svg>
@@ -148,6 +161,9 @@ canvas {
   <div class="msg" id="msg" aria-live="polite"></div>
   <div class="toast" id="toast" role="status" hidden><div class="toast-t"><b id="toastTitle"></b><span id="toastSub"></span></div><button class="go" id="toastGo">Göster</button><button class="x" id="toastX" aria-label="Kapat">×</button></div>
 
+  <div class="welcome" id="welcome" hidden><div class="welcome-card">
+    <svg width="84" height="60" viewBox="0 0 84 60" aria-hidden="true"><g fill="#ff8fb1"><circle cx="24" cy="34" r="16"/><circle cx="42" cy="24" r="20"/><circle cx="62" cy="32" r="16"/><rect x="24" y="30" width="38" height="20"/></g><circle cx="35" cy="34" r="2.6" fill="#2b3a55"/><circle cx="51" cy="34" r="2.6" fill="#2b3a55"/><path d="M38 41q5 5 10 0" stroke="#2b3a55" stroke-width="2.4" fill="none" stroke-linecap="round"/></svg>
+    <h2>Hoş geldin!</h2><p id="welcomeText"></p><button class="buy" id="welcomeBtn">Topla</button></div></div>
   <div class="backdrop" id="backdrop" hidden></div>
   <div class="tabs" role="tablist" id="tabs">
     <button role="tab" data-tab="ups" aria-selected="false" id="tabUps">Yükselt</button>
@@ -160,13 +176,19 @@ canvas {
   <section class="panel" id="panel-ups" role="tabpanel" hidden>
     <h2>Yükseltmeler</h2>
     <p class="sub">Damla kazanmak kolay değil: çiçek aç, kombo yap, görev bitir. Yükseltmeler her seviyede pahalanır.</p>
+    <div id="prestigeBox"></div>
     <div id="ups"></div>
   </section>
 
   <section class="panel" id="panel-quests" role="tabpanel" hidden>
     <h2>Görevler</h2>
     <p class="sub">Günlük hediyeni al, görevleri bitir. Biten görevin yerine yenisi gelir.</p>
+    <div id="eventBox"></div>
     <div id="questList"></div>
+    <h2 class="sec-h">Haftalık hedefler</h2>
+    <div id="weeklyList"></div>
+    <h2 class="sec-h">Çiçek albümü</h2>
+    <div id="albumList"></div>
     <h2 style="margin-top:6px">Bahçıvan kartı</h2>
     <div class="stats" id="stats"></div>
     <h2 style="margin-top:6px">Rozetler</h2>
@@ -221,10 +243,10 @@ canvas {
   var msgEl = document.getElementById('msg');
 
   /* ---------- kayıt ---------- */
-  var UPKEYS = ['power', 'tank', 'refill', 'wide', 'idle', 'luck', 'cool'];
+  var UPKEYS = ['power', 'tank', 'refill', 'wide', 'idle', 'luck', 'cool', 'bee', 'dream'];
   function defaults() {
     return { ver: 2, garden: 1, rainbows: 0, found: {}, gold: 0, up: {}, quests: [], badges: {},
-      daily: { last: '', streak: 0 }, world: 'sky', worlds: { sky: true }, wlv: {}, cos: { owned: {}, worn: {} }, buffs: { reward: 0, drain: 0 },
+      daily: { last: '', streak: 0 }, world: 'sky', worlds: { sky: true }, wlv: {}, prestige: { count: 0, gp: 0 }, album: { n: {}, c: {} }, evt: { id: '', pts: 0, claimed: {} }, week: { id: '', goals: [] }, lastSeen: 0, cos: { owned: {}, worn: {} }, buffs: { reward: 0, drain: 0 },
       stats: { blooms: 0, tiers: 0, refills: 0, sec: 0, maxTier: 1, earned: 0, starsCaught: 0 },
       set: { diff: 'normal', vol: 80, theme: 'day', face: 'smile', motion: null, owned: { day: true } } };
   }
@@ -239,7 +261,11 @@ canvas {
     st.up = st.up || {}; UPKEYS.forEach(function (k) { st.up[k] = st.up[k] || 0; });
     st.quests = st.quests || []; st.badges = st.badges || {};
     st.daily = st.daily || d.daily;
-    st.wlv = st.wlv || {}; st.cos = st.cos || { owned: {}, worn: {} }; st.cos.owned = st.cos.owned || {}; st.cos.worn = st.cos.worn || {}; st.buffs = st.buffs || { reward: 0, drain: 0 }; st.buffs.reward = st.buffs.reward || 0; st.buffs.drain = st.buffs.drain || 0; st.worlds = st.worlds || {}; st.worlds.sky = true; if (!st.world || !st.worlds[st.world]) st.world = 'sky';
+    st.wlv = st.wlv || {}; st.cos = st.cos || { owned: {}, worn: {} }; st.cos.owned = st.cos.owned || {}; st.cos.worn = st.cos.worn || {}; st.buffs = st.buffs || { reward: 0, drain: 0 }; st.buffs.reward = st.buffs.reward || 0; st.buffs.drain = st.buffs.drain || 0;
+    st.prestige = st.prestige || { count: 0, gp: 0 }; st.prestige.count = st.prestige.count || 0; st.prestige.gp = st.prestige.gp || 0;
+    st.album = st.album || { n: {}, c: {} }; st.album.n = st.album.n || {}; st.album.c = st.album.c || {};
+    st.evt = st.evt || { id: '', pts: 0, claimed: {} }; st.evt.claimed = st.evt.claimed || {}; st.evt.pts = st.evt.pts || 0;
+    st.week = st.week || { id: '', goals: [] }; st.week.goals = st.week.goals || []; st.lastSeen = st.lastSeen || 0; st.worlds = st.worlds || {}; st.worlds.sky = true; if (!st.world || !st.worlds[st.world]) st.world = 'sky';
     st.stats = st.stats || d.stats; Object.keys(d.stats).forEach(function (k) { st.stats[k] = st.stats[k] || 0; });
     st.stats.maxTier = Math.max(st.stats.maxTier, st.garden || 1);
     st.set = st.set || d.set; Object.keys(d.set).forEach(function (k) { if (st.set[k] === undefined) st.set[k] = d.set[k]; });
@@ -248,7 +274,7 @@ canvas {
     if (st.wlv.sky === undefined) st.wlv.sky = Math.max(0, st.stats.maxTier - 1);
   }
   fix();
-  function save() { try { localStorage.setItem(SAVE, JSON.stringify(st)); } catch (e) {} }
+  function save() { st.lastSeen = Date.now(); try { localStorage.setItem(SAVE, JSON.stringify(st)); } catch (e) {} }
   function motionReduced() { return st.set.motion === null ? sysReduce : !!st.set.motion; }
   function earn(n) { st.gold += n; st.stats.earned += n; }
 
@@ -284,12 +310,15 @@ canvas {
     { id: 'wide', name: 'Geniş yağmur', desc: 'Yağmur daha geniş alana düşer.', base: 30 },
     { id: 'idle', name: 'Bulut uykusu', desc: 'Gökte boşta duran bulutlar yavaşça dolar.', base: 36 },
     { id: 'luck', name: 'Altın dokunuş', desc: 'Çiçekler ve görevler daha çok damla verir.', base: 45 },
-    { id: 'cool', name: 'Hızlı yetenek', desc: 'Yetenekler daha çabuk hazır olur.', base: 36 }
+    { id: 'cool', name: 'Hızlı yetenek', desc: 'Yetenekler daha çabuk hazır olur.', base: 36 },
+    { id: 'bee', name: 'Çalışkan arı', desc: 'Bir arı susayan çiçekleri senin yerine sular.', base: 60 },
+    { id: 'dream', name: 'Rüya bulutu', desc: 'Sen yokken daha çok damla biriktirir, daha uzun süre çalışır.', base: 50 }
   ];
   function upCost(u) { return Math.round(u.base * Math.pow(1.85, st.up[u.id])); }
   function luckF() { return 1 + 0.1 * st.up.luck; }
   function isBoss() { return st.garden >= 5 && st.garden % 5 === 0; }
-  function tierF() { return Math.min(4.5, 1 + 0.14 * (st.garden - 1)); }
+  function waveF() { var m = st.garden % 5; if (st.garden >= 5 && m === 0) return 1.15; if (st.garden > 5 && (m === 1 || m === 2)) return 0.88; return 1; }
+  function tierF() { return Math.min(4.5, 1 + 0.14 * (st.garden - 1)) * waveF(); }
 
   /* olaylar, kombo, dinginlik: oyun içi geçici durumlar */
   var GEV = [
@@ -303,7 +332,7 @@ canvas {
   function evMod(k) { return ev && ev.def[k] !== undefined ? ev.def[k] : 1; }
 
   function fillPer() { return 0.034 * (1 + 0.15 * st.up.power) * D().fill * WM('fill') / tierF(); }
-  function drainRate() { return 0.13 * Math.min(2.5, 1 + 0.06 * (st.garden - 1)) * D().drain * Math.pow(0.88, st.up.tank) * evMod('drain') * WM('drain') * (calmT > 0 ? 0.5 : 1) * (st.buffs.drain > 0 ? 0.5 : 1); }
+  function drainRate() { return 0.13 * Math.min(2.5, 1 + 0.06 * (st.garden - 1)) * D().drain * Math.pow(0.88, st.up.tank) * evMod('drain') * WM('drain') * waveF() * (calmT > 0 ? 0.5 : 1) * (st.buffs.drain > 0 ? 0.5 : 1); }
   function decayRate() { return 0.012 * (1 + 0.05 * (st.garden - 1)) * D().decay * evMod('decay') * WM('decay'); }
   function refillRate() { return 0.5 * (1 + 0.25 * st.up.refill); }
   function hitR() { return 30 + 4 * st.up.wide; }
@@ -311,11 +340,12 @@ canvas {
   function windStr() { return st.garden >= 3 ? Math.min(70, 12 * (st.garden - 2)) * D().wind * WM('wind') : 0; }
   function windNow() { return calmT > 0 ? 0 : windStr() * evMod('wind') * Math.sin(tAll * 0.5); }
   function money(n) {
-    var v = n * D().reward * luckF() * evMod('reward') * WM('reward') * (st.buffs.reward > 0 ? 1.5 : 1), f = Math.floor(v);
+    var v = n * D().reward * luckF() * evMod('reward') * WM('reward') * (st.buffs.reward > 0 ? 1.5 : 1) * prestigeMult() * evtMult(), f = Math.floor(v);
     return Math.max(1, f + (Math.random() < v - f ? 1 : 0));
   }
   function tierNote() {
     if (isBoss()) return 'Büyük bahçe: ödüller üç kat!';
+    if (st.garden > 5 && (st.garden % 5 === 1 || st.garden % 5 === 2)) return 'Dinlenme bahçesi: biraz daha rahat';
     if (st.garden === 1) return 'Susayan çiçekleri bul';
     if (st.garden === 2) return 'İki renkli çiçekler ve olaylar başlıyor';
     if (st.garden === 3) return 'Rüzgar çıktı, yağmur savruluyor';
@@ -376,7 +406,7 @@ canvas {
   function yesterday() { return dayStr(new Date(Date.now() - 86400000)); }
   function giftReady() { return st.daily.last !== today(); }
   function nextStreak() { return st.daily.last === yesterday() ? st.daily.streak + 1 : 1; }
-  function giftAmount(s) { return 5 + 3 * Math.min(s - 1, 6); }
+  function giftAmount(s) { return s % 7 === 0 ? 30 * Math.min(3, s / 7) : 5 + 3 * ((s - 1) % 7); }
 
   /* ---------- oyun durumu ---------- */
   function mkCloud(x, y, col, vx) { return { x: x, y: y, col: col, water: 1, vx: vx, holder: null, tx: 0, ty: 0, acc: 0, wasLow: false, dryMark: false }; }
@@ -440,6 +470,8 @@ canvas {
     { id: 'cosmo', name: 'Evren kaşifi', desc: 'Bütün evrenleri aç.', r: 60, test: function () { return ownedWorlds() >= WORLDS.length - 1; } },
     { id: 'style', name: 'Stil sahibi', desc: '5 kostüm satın al.', r: 15, test: function () { return Object.keys(st.cos.owned).length >= 5; } },
     { id: 'star20', name: 'Yıldız avcısı', desc: '20 yıldız yakala.', r: 15, test: function () { return st.stats.starsCaught >= 20; } },
+    { id: 'renew', name: 'Yeniden doğuş', desc: 'İlk Gökkuşağı Yenileme.', r: 30, test: function () { return st.prestige.count >= 1; } },
+    { id: 'gp5', name: 'Gökkuşağı ustası', desc: '5 Gökkuşağı gücü topla.', r: 60, test: function () { return st.prestige.gp >= 5; } },
     { id: 'combo', name: 'Zincir ustası', desc: 'Kombo ×5 yap.', r: 12, test: function () { return st.stats.bestCombo >= 5; } }
   ];
   function checkBadges() {
@@ -524,6 +556,9 @@ canvas {
       upRows[u.id].row.classList.toggle('ready', on); upRows[u.id].tag.hidden = !on;
     });
     $('tabUps').innerHTML = 'Yükselt' + (rl.length ? '<span class="badge">' + rl.length + '</span>' : '');
+    var pg = prestigeGain(), pbox = $('prestigeBox');
+    pbox.innerHTML = '<div class="row' + (pg > 0 ? ' ready' : '') + '"><div class="row-t"><b>Gökkuşağı Yenileme' + (pg > 0 ? '<em class="tag">Hazır</em>' : '') + '</b><span>Her şeyi sıfırla, kalıcı Gökkuşağı gücü kazan. Her güç tüm ödülleri %8 artırır. Kostüm, evren, rozet ve albüm kalır.</span><span>Şu an: ' + st.prestige.gp + ' güç (ödüller ×' + prestigeMult().toFixed(2).replace('.', ',') + ')' + (pg > 0 ? ' · şimdi yenilersen +' + pg + ' güç' : ' · Kademe 10\'da açılır (şu an ' + st.garden + ')') + '</span></div><button class="buy" id="prestigeBtn"' + (pg > 0 ? '' : ' disabled') + '>' + (prestigeArmed ? 'Emin misin?' : 'Yenile') + '</button></div>';
+    var gpc = $('gpChip'); gpc.hidden = st.prestige.gp <= 0; gpc.textContent = 'Güç ×' + prestigeMult().toFixed(2).replace('.', ',');
     document.body.classList.toggle('calm', motionReduced());
     notifyUps(rl);
 
@@ -531,7 +566,7 @@ canvas {
     var readyQ = 0, ql = $('questList'); ql.innerHTML = '';
     var gr = giftReady(), gs = nextStreak(), ga = giftAmount(gs);
     var grow = document.createElement('div'); grow.className = 'row' + (gr ? ' ready' : '');
-    grow.innerHTML = '<div class="row-t"><b>Günlük hediye' + (gr ? '<em class="tag">Hazır</em>' : '') + '</b><span>' + (gr ? 'Bugünkü ödül ' + ga + ' damla · seri ' + gs + '. gün' : 'Seri ' + st.daily.streak + ' gün. Yarın tekrar gel.') + '</span></div><button class="buy" data-gift="1"' + (gr ? '' : ' disabled') + '>' + (gr ? 'Al · ' + ga : 'Alındı') + '</button>';
+    grow.innerHTML = '<div class="row-t"><b>Günlük hediye' + (gr ? '<em class="tag">Hazır</em>' : '') + '</b><span>' + (gr ? 'Bugünkü ödül ' + ga + ' damla · seri ' + gs + '. gün' + (gs % 7 === 0 ? ' · büyük ödül günü!' : ' · her 7. gün büyük ödül') : 'Seri ' + st.daily.streak + ' gün. Yarın tekrar gel, 7. günde büyük ödül var.') + '</span></div><button class="buy" data-gift="1"' + (gr ? '' : ' disabled') + '>' + (gr ? 'Al · ' + ga : 'Alındı') + '</button>';
     ql.appendChild(grow); if (gr) readyQ++;
     st.quests.forEach(function (q, idx) {
       var done = q.p >= q.n; if (done) readyQ++;
@@ -539,6 +574,7 @@ canvas {
       row.innerHTML = '<div class="row-t"><b>' + qText(q) + '</b><span>' + q.p + ' / ' + q.n + '</span><div class="bar"><i style="width:' + (q.p / q.n * 100) + '%"></i></div></div><button class="buy" data-q="' + idx + '"' + (done ? '' : ' disabled') + '>' + (done ? 'Al · ' + Math.round(q.r * luckF()) : 'Devam') + '</button>';
       ql.appendChild(row);
     });
+    readyQ += renderMeta();
     $('tabQuests').innerHTML = 'Görevler' + (readyQ ? '<span class="badge">' + readyQ + '</span>' : '');
     var wl = $('worldList'); wl.innerHTML = ''; var wReady = [];
     WORLDS.forEach(function (w) {
@@ -559,7 +595,7 @@ canvas {
     }
     notifiedW = curW;
 
-    $('stats').innerHTML = '<div class="stat"><b>' + st.stats.blooms + '</b><span>Açan çiçek</span></div><div class="stat"><b>' + st.stats.maxTier + '</b><span>En yüksek kademe</span></div><div class="stat"><b>' + st.rainbows + '</b><span>Gökkuşağı</span></div><div class="stat"><b>' + st.stats.earned + '</b><span>Toplam damla</span></div><div class="stat"><b>' + (st.stats.bestCombo || 0) + '</b><span>En iyi kombo</span></div><div class="stat"><b>' + st.stats.starsCaught + '</b><span>Yakalanan yıldız</span></div><div class="stat"><b>' + fmtTime(st.stats.sec) + '</b><span>Oynama süresi</span></div>';
+    $('stats').innerHTML = '<div class="stat"><b>' + st.prestige.gp + '</b><span>Gökkuşağı gücü</span></div><div class="stat"><b>' + st.stats.blooms + '</b><span>Açan çiçek</span></div><div class="stat"><b>' + st.stats.maxTier + '</b><span>En yüksek kademe</span></div><div class="stat"><b>' + st.rainbows + '</b><span>Gökkuşağı</span></div><div class="stat"><b>' + st.stats.earned + '</b><span>Toplam damla</span></div><div class="stat"><b>' + (st.stats.bestCombo || 0) + '</b><span>En iyi kombo</span></div><div class="stat"><b>' + st.stats.starsCaught + '</b><span>Yakalanan yıldız</span></div><div class="stat"><b>' + fmtTime(st.stats.sec) + '</b><span>Oynama süresi</span></div>';
     var bl = $('badgeList'); bl.innerHTML = '';
     BADGES.forEach(function (b) {
       var on = !!st.badges[b.id], row = document.createElement('div'); row.className = 'row badge-row' + (on ? '' : ' off');
@@ -629,7 +665,8 @@ canvas {
       if (!giftReady()) return;
       var s = nextStreak(), amt = giftAmount(s);
       st.daily = { last: today(), streak: s }; earn(amt);
-      say('Günlük hediye: +' + amt + ' damla · seri ' + s + '. gün'); buySound(); updateUI(); save();
+      var capeMsg = ''; if (s === 7 && !st.cos.owned.cape) { st.cos.owned.cape = true; capeMsg = ' Kahraman pelerini kazandın!'; }
+      say('Günlük hediye: +' + amt + ' damla · seri ' + s + '. gün.' + capeMsg); buySound(); updateUI(); save();
       return;
     }
     var b = e.target.closest('button[data-q]'); if (!b || b.disabled) return;
@@ -667,6 +704,7 @@ canvas {
     drops.length = 0; parts.length = 0; flies.length = 0;
     ev = null; evNext = 50; calmT = 0; combo = 0; comboT = 0;
     cdLeft.sun = 0; cdLeft.herd = 0; cdLeft.calm = 0;
+    prestigeArmed = false; welcomeOpen = false; $('welcome').hidden = true; bee.mode = 'idle'; bee.x = 40; bee.y = 330;
     gardenTimer = 0; rainbowT = 0; tierFx = 0; petalT = 0; stars.length = 0; floats.length = 0; starT = rnd(15, 28); shopCloud = 'p';
     notified = null; notifiedW = null; hideToast(); setTab(null);
     newGarden(); updateUI(); updateAbil(); save();
@@ -738,7 +776,8 @@ canvas {
     s.done = true; s.t = 0;
     var firstTime = !st.found[s.key];
     st.found[s.key] = true;
-    st.stats.blooms++; questAdd('any', null, 1); questAdd('key', s.key, 1);
+    st.stats.blooms++; questAdd('any', null, 1); questAdd('key', s.key, 1); weeklyAdd('any', 1); evtAdd(comboT > 0 && combo >= 2 ? 2 : 1);
+    st.album.n[s.key] = (st.album.n[s.key] || 0) + 1;
     combo = comboT > 0 ? combo + 1 : 1; comboT = 7;
     if (combo > (st.stats.bestCombo || 0)) st.stats.bestCombo = combo;
     var cm = 1 + 0.2 * Math.min(combo - 1, 5);
@@ -750,7 +789,7 @@ canvas {
     if (flies.length < 8) flies.push({ x: s.x, y: s.y - 40, ph: Math.random() * 6, col: HEX[s.key], cx: s.x });
     say((firstTime ? NAMES[s.key] + ' çiçek bulundu! ' : NAMES[s.key] + ' çiçek açtı! ') + '+' + reward + ' damla' + (combo >= 2 ? ' · kombo ×' + combo : ''));
     if (seeds.every(function (x) { return x.done; }) && gardenTimer <= 0) {
-      gardenTimer = 2.4; st.stats.tiers++;
+      gardenTimer = 2.4; st.stats.tiers++; weeklyAdd('tier', 1);
       st.wlv[st.world] = wlvl(st.world) + 1;
       var nx = WORLDS[WORLDS.indexOf(worldById(st.world)) + 1];
       if (nx && !st.worlds[nx.id] && wlvl(st.world) === nx.need) showToast('Yeni evren kilidi açıldı!', nx.name + ' artık satın alınabilir.', 'worlds'); questAdd('tier', null, 1);
@@ -786,6 +825,8 @@ canvas {
     if (calmT > 0) calmT -= dt;
     if (st.buffs.reward > 0) st.buffs.reward = Math.max(0, st.buffs.reward - dt);
     if (st.buffs.drain > 0) st.buffs.drain = Math.max(0, st.buffs.drain - dt);
+    updateBee(dt);
+    if (parts.length < 120 && Math.random() < dt * 1.4 && evtInfo().active) parts.push({ x: rnd(0, W), y: -10, vx: rnd(-25, 25), vy: rnd(50, 100), life: 0, max: rnd(2, 3.2), col: evtInfo().def.col, r: rnd(3, 5), kind: 'petal', rot: Math.random() * 6 });
     starT -= dt; if (starT <= 0) { spawnStar(true); starT = rnd(30, 55); }
     if (ev && ev.def.stars) { ev.starAcc = (ev.starAcc || 0) + dt; if (ev.starAcc > 0.45) { ev.starAcc = 0; spawnStar(false); } }
     for (var si = stars.length - 1; si >= 0; si--) {
@@ -835,7 +876,7 @@ canvas {
         if (Math.random() < dt * 10) burst(c.x + rnd(-20, 20), SEA, '#9bd8ff', 1, 'bubble');
         if (c.water >= 1) {
           splashSound(); c.wasLow = false;
-          if (c.dryMark) { c.dryMark = false; st.stats.refills++; questAdd('refill', null, 1); updateUI(); save(); }
+          if (c.dryMark) { c.dryMark = false; st.stats.refills++; questAdd('refill', null, 1); weeklyAdd('refill', 1); updateUI(); save(); }
         }
       }
       if (c.holder !== null && !inSea && c.water > 0 && c.y < 400) {
@@ -1004,6 +1045,13 @@ canvas {
       ctx.fillStyle = '#7a4a00'; circle(sx - 9, sy - 4, 2.5); circle(sx + 9, sy - 4, 2.5);
       ctx.strokeStyle = '#7a4a00'; ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.beginPath(); ctx.arc(sx, sy + 3, 10, 0.2, Math.PI - 0.2); ctx.stroke();
     }
+    if (!wv && st.set.theme !== 'night') {
+      ctx.fillStyle = st.set.theme === 'dusk' ? 'rgba(255,210,170,0.45)' : 'rgba(255,255,255,0.55)';
+      for (var pi = 0; pi < 4; pi++) {
+        var px2 = ((pi * 140 + (still ? 0 : tAll * (4 + pi * 2))) % 460) - 50, py2 = 62 + pi * 58;
+        circle(px2, py2, 14 + pi * 2); circle(px2 + 16, py2 + 3, 11 + pi); circle(px2 - 14, py2 + 4, 10 + pi);
+      }
+    }
     ctx.fillStyle = th.hill; ctx.beginPath(); ctx.moveTo(0, GROUND); ctx.quadraticCurveTo(70, 340, 150, GROUND); ctx.quadraticCurveTo(230, 350, 320, GROUND); ctx.lineTo(360, GROUND); ctx.lineTo(360, GROUND + 4); ctx.lineTo(0, GROUND + 4); ctx.fill();
   }
   function drawRainbow() {
@@ -1117,7 +1165,7 @@ canvas {
     var body = mix('#c9d3de', HEX[c.col], 0.35 + 0.65 * wet);
     var bob = (held || motionReduced()) ? 0 : Math.sin(tAll * 1.5 + c.x * 0.05) * 2;
     var sc = (held ? 1.06 : 1) * (1 + 0.03 * (st.up.power + st.up.tank));
-    ctx.save(); ctx.translate(c.x, c.y + bob); ctx.scale(sc, sc);
+    ctx.save(); ctx.translate(c.x, c.y + bob); var br = motionReduced() ? 0 : 0.02 * Math.sin(tAll * 2.2 + c.x * 0.1); ctx.scale(sc * (1 + br), sc * (1 - br));
     ctx.fillStyle = 'rgba(0,0,0,0.10)'; ctx.beginPath(); ctx.ellipse(2, 12, 42, 14, 0, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = body;
     ctx.beginPath(); ctx.arc(-26, 4, 18, 0, Math.PI * 2); ctx.arc(-8, -8, 24, 0, Math.PI * 2); ctx.moveTo(36, -4); ctx.arc(14, -4, 22, 0, Math.PI * 2); ctx.moveTo(46, 6); ctx.arc(30, 6, 16, 0, Math.PI * 2); ctx.fill();
@@ -1226,7 +1274,12 @@ canvas {
     { id: 'cat', name: 'Kedi kulakları', cost: 120, desc: 'Miyav yağmuru!' },
     { id: 'wizard', name: 'Büyücü şapkası', cost: 130, desc: 'Yıldızlı ve gizemli.' },
     { id: 'helmet', name: 'Astronot kaskı', cost: 200, desc: 'Uzaya hazır.' },
-    { id: 'crown', name: 'Kral tacı', cost: 220, desc: 'Bulutların kralı.' }
+    { id: 'crown', name: 'Kral tacı', cost: 220, desc: 'Bulutların kralı.' },
+    { id: 'icecream', name: 'Dondurma şapkası', cost: 0, desc: 'Üç top dondurma.', lim: 'Şeker Fırtınası etkinliğinde kazan.' },
+    { id: 'halo', name: 'Yıldız halesi', cost: 0, desc: 'Başının üstünde yıldızlar dönüyor.', lim: 'Yıldız Gecesi etkinliğinde kazan.' },
+    { id: 'wings', name: 'Kelebek kanatları', cost: 0, desc: 'Renkli kanatlarla süzül.', lim: 'Çiçek Festivali etkinliğinde kazan.' },
+    { id: 'snowflake', name: 'Kar tanesi tacı', cost: 0, desc: 'Üç minik kar tanesi.', lim: 'Kar Şenliği etkinliğinde kazan.' },
+    { id: 'cape', name: 'Kahraman pelerini', cost: 0, desc: 'Bulutların kahramanı.', lim: '7 gün üst üste günlük hediye al.' }
   ];
   var BOOSTS = [
     { id: 'reward', name: 'Bereket tılsımı', cost: 60, desc: '90 saniye boyunca damla ödülleri ×1,5.' },
@@ -1291,6 +1344,37 @@ canvas {
       ctx.fillStyle = '#e8445a'; ctx.beginPath(); ctx.arc(-8, -26, 21, Math.PI, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#ffffff'; ctx.fillRect(-31, -29, 46, 9);
       ctx.fillStyle = '#fff'; circle(-8, -49, 6.5);
+    } else if (id === 'icecream') {
+      ctx.fillStyle = '#ffb3d1'; circle(-8, -37, 12); ctx.fillStyle = '#fff3d6'; circle(-8, -50, 9); ctx.fillStyle = '#c9a0ff'; circle(-8, -59, 6.5);
+      ctx.fillStyle = '#e8445a'; circle(-8, -67, 3.5); ctx.strokeStyle = '#3a7d44'; ctx.lineWidth = 1.8; ctx.beginPath(); ctx.moveTo(-8, -70); ctx.lineTo(-4, -75); ctx.stroke();
+      ctx.fillStyle = 'rgba(255,255,255,0.45)'; circle(-12, -40, 3);
+    } else if (id === 'halo') {
+      ctx.strokeStyle = 'rgba(255,226,122,0.9)'; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(-6, -42, 22, 5.5, 0, 0, Math.PI * 2); ctx.stroke();
+      for (i = 0; i < 5; i++) { var an2 = (i / 5) * Math.PI * 2 + (motionReduced() ? 0 : tAll * 1.4); star(-6 + Math.cos(an2) * 22, -42 + Math.sin(an2) * 5.5, 4.5, i % 2 ? '#fff6c2' : '#ffd23f'); }
+    } else if (id === 'wings') {
+      var w1 = mix(c0, '#ffffff', 0.15), flap = motionReduced() ? 0 : Math.sin(tAll * 5) * 0.12;
+      [-1, 1].forEach(function (sd) {
+        ctx.save(); ctx.scale(sd, 1); ctx.rotate(flap * sd);
+        ctx.fillStyle = 'rgba(255,154,77,0.92)'; ctx.beginPath(); ctx.ellipse(54, -16, 20, 13, -0.55, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = 'rgba(255,210,63,0.92)'; ctx.beginPath(); ctx.ellipse(50, 8, 14, 10, 0.5, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.8)'; circle(58, -18, 3.2); circle(52, 9, 2.4);
+        ctx.restore();
+      });
+    } else if (id === 'snowflake') {
+      [[-24, -33, 7], [-8, -42, 8.5], [8, -33, 7]].forEach(function (f) {
+        [['#3fa9e0', 4], ['#ffffff', 2]].forEach(function (pen) {
+          ctx.strokeStyle = pen[0]; ctx.lineWidth = pen[1]; ctx.beginPath();
+          for (var q = 0; q < 3; q++) { var ang = q * Math.PI / 3; ctx.moveTo(f[0] - Math.cos(ang) * f[2], f[1] - Math.sin(ang) * f[2]); ctx.lineTo(f[0] + Math.cos(ang) * f[2], f[1] + Math.sin(ang) * f[2]); }
+          ctx.stroke();
+        });
+      });
+    } else if (id === 'cape') {
+      var fw = motionReduced() ? 0 : Math.sin(tAll * 4) * 3;
+      ctx.fillStyle = '#e8445a'; ctx.beginPath(); ctx.moveTo(-28, -4);
+      ctx.quadraticCurveTo(-50, -12 + fw, -72, -2 + fw); ctx.lineTo(-62, 10 + fw); ctx.lineTo(-74, 22 + fw);
+      ctx.quadraticCurveTo(-48, 26, -28, 18); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.beginPath(); ctx.moveTo(-30, -2); ctx.quadraticCurveTo(-50, -8 + fw, -66, 0 + fw); ctx.lineTo(-40, 6); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#ffd23f'; circle(-28, 6, 4);
     } else if (id === 'flowers') {
       var fc = ['#ff8fb1', '#ffffff', '#ffd23f', '#b185ff', '#ff9a4d'], pts = [[-26, -14], [-15, -29], [-3, -34], [10, -29], [22, -19]];
       pts.forEach(function (pt, k) {
@@ -1314,7 +1398,7 @@ canvas {
     COSTUMES.forEach(function (k) {
       var own = !!st.cos.owned[k.id], worn = st.cos.worn[shopCloud] === k.id;
       var row = document.createElement('div'); row.className = 'row';
-      row.innerHTML = '<canvas class="cprev" width="152" height="120"></canvas><div class="row-t"><b>' + k.name + '</b><span>' + k.desc + '</span></div><button class="buy" data-cos="' + k.id + '"' + (!own && st.gold < k.cost ? ' disabled' : '') + '>' + (!own ? 'Al · ' + k.cost : worn ? 'Çıkar' : 'Giy') + '</button>';
+      row.innerHTML = '<canvas class="cprev" width="152" height="120"></canvas><div class="row-t"><b>' + k.name + '</b><span>' + (!own && k.lim ? k.lim : k.desc) + '</span></div><button class="buy" data-cos="' + k.id + '"' + (!own && (k.lim || st.gold < k.cost) ? ' disabled' : '') + '>' + (!own ? (k.lim ? 'Kilitli' : 'Al · ' + k.cost) : worn ? 'Çıkar' : 'Giy') + '</button>';
       cl.appendChild(row); costumePreview(row.querySelector('canvas'), k.id);
     });
     BOOSTS.forEach(function (k) {
@@ -1334,7 +1418,7 @@ canvas {
     var b = e.target.closest('button[data-cos]'); if (!b || b.disabled) return;
     var id = b.getAttribute('data-cos'), k = COSTUMES.filter(function (x) { return x.id === id; })[0]; if (!k) return;
     if (!st.cos.owned[id]) {
-      if (st.gold < k.cost) return;
+      if (k.lim || st.gold < k.cost) return;
       st.gold -= k.cost; st.cos.owned[id] = true; st.cos.worn[shopCloud] = id; buySound(); say(k.name + ' alındı ve giydirildi!');
     } else st.cos.worn[shopCloud] = st.cos.worn[shopCloud] === id ? '' : id;
     updateUI(); save();
@@ -1365,7 +1449,7 @@ canvas {
   }
   function collectStar(i) {
     var sr = stars[i]; if (!sr) return;
-    stars.splice(i, 1); earn(sr.val); st.stats.starsCaught++; uiDirty = true;
+    stars.splice(i, 1); earn(sr.val); st.stats.starsCaught++; uiDirty = true; weeklyAdd('star', 1);
     floats.push({ x: sr.x, y: sr.y - 10, text: '+' + sr.val, col: '#b87800', life: 0 });
     burst(sr.x, sr.y, '#ffd23f', sr.gold ? 16 : 8);
     tone(1047, 0.15, 0, 'triangle', 0.1); tone(1568, 0.2, 0.08, 'triangle', 0.1);
@@ -1395,6 +1479,188 @@ canvas {
     ctx.restore();
   }
 
+
+  /* ---------- meta: prestij, çevrimdışı kazanç, arı, etkinlik, hedefler, albüm ---------- */
+  function prestigeMult() { return 1 + 0.08 * st.prestige.gp; }
+  function prestigeGain() { return st.garden >= 10 ? Math.floor((st.garden - 7) / 3) : 0; }
+  var prestigeArmed = false, prestigeTimer = null;
+  function doPrestige() {
+    var gain = prestigeGain(); if (gain < 1) return;
+    st.prestige.gp += gain; st.prestige.count++;
+    st.garden = 1; st.found = {}; UPKEYS.forEach(function (k) { st.up[k] = 0; });
+    st.gold = 10 * st.prestige.gp; st.buffs = { reward: 0, drain: 0 };
+    st.quests = []; while (st.quests.length < 3) st.quests.push(newQuest());
+    clouds.length = 0; clouds.push(mkCloud(80, 120, 'p', 10), mkCloud(190, 190, 'b', -9), mkCloud(280, 130, 'y', 8));
+    drops.length = 0; parts.length = 0; flies.length = 0; stars.length = 0; floats.length = 0;
+    ev = null; evNext = 50; calmT = 0; combo = 0; comboT = 0; gardenTimer = 0; rainbowT = 0;
+    cdLeft.sun = 0; cdLeft.herd = 0; cdLeft.calm = 0;
+    prestigeArmed = false; notified = null; hideToast(); setTab(null);
+    newGarden(true); fanfare();
+    for (var i = 0; i < 5; i++) burst(rnd(50, 310), rnd(80, 300), null, 18, 'confetti');
+    say('Gökkuşağı Yenileme! +' + gain + ' güç: bütün ödüller artık ×' + prestigeMult().toFixed(2).replace('.', ','));
+    updateUI(); save();
+  }
+  $('prestigeBox').addEventListener('click', function (e) {
+    var b = e.target.closest('#prestigeBtn'); if (!b || b.disabled) return;
+    if (!prestigeArmed) {
+      prestigeArmed = true; updateUI();
+      clearTimeout(prestigeTimer); prestigeTimer = setTimeout(function () { prestigeArmed = false; updateUI(); }, 4000);
+    } else { clearTimeout(prestigeTimer); doPrestige(); }
+  });
+
+  var welcomeOpen = false, welcomeAmt = 0;
+  function offlineCap() { return (2 + 1.5 * st.up.dream) * 3600; }
+  function offlineRate() { return (0.12 + 0.05 * st.up.dream) * (1 + 0.08 * (st.garden - 1)) * prestigeMult() * D().reward; }
+  function checkOffline() {
+    if (welcomeOpen || !st.lastSeen) return;
+    var away = (Date.now() - st.lastSeen) / 1000; if (away < 300) return;
+    var sec = Math.min(away, offlineCap()), amt = Math.max(1, Math.round(sec / 60 * offlineRate()));
+    welcomeOpen = true; welcomeAmt = amt;
+    $('welcomeText').textContent = 'Sen yokken (' + fmtTime(Math.round(away)) + ') bulutların çalıştı ve ' + amt + ' damla biriktirdi.' + (away > sec ? ' En fazla ' + (Math.round(offlineCap() / 360) / 10) + ' saatlik kazanç birikir. Rüya bulutunu yükseltirsen bu süre uzar.' : '');
+    $('welcome').hidden = false; st.lastSeen = Date.now();
+  }
+  $('welcomeBtn').addEventListener('click', function () {
+    if (!welcomeOpen) return;
+    earn(welcomeAmt); floats.push({ x: 180, y: 260, text: '+' + welcomeAmt, col: '#d6336c', life: 0 });
+    welcomeOpen = false; $('welcome').hidden = true; buySound(); updateUI(); save();
+  });
+
+  var bee = { x: 40, y: 330, hx: 120, hy: 330, mode: 'idle', seed: null, next: 6, wt: 2, ph: 0, dir: 1 };
+  function updateBee(dt) {
+    if (st.up.bee <= 0) return;
+    var b = bee; b.ph += dt;
+    var tx = b.hx, ty = b.hy, sp = 70;
+    if (b.mode === 'go') {
+      var s0 = b.seed;
+      if (!s0 || s0.done || seeds.indexOf(s0) < 0) b.mode = 'idle'; else { tx = s0.x; ty = s0.y - 46; sp = 150; }
+    }
+    var dx = tx - b.x, dy = ty - b.y, d = Math.hypot(dx, dy);
+    if (d > 2) { var stp = Math.min(d, sp * dt); b.x += dx / d * stp; b.y += dy / d * stp; b.dir = dx >= 0 ? 1 : -1; }
+    if (b.mode === 'go' && d < 8) {
+      var s2 = b.seed, need = s2.need.filter(function (k) { return s2.fill[k] < 1; });
+      if (need.length) {
+        var k2 = need[Math.floor(Math.random() * need.length)];
+        s2.fill[k2] = Math.min(1, s2.fill[k2] + 0.16 + 0.04 * st.up.bee); s2.idle = 0;
+        burst(s2.x, s2.y - 30, HEX[k2], 8); splashSound();
+        if (s2.need.every(function (c) { return s2.fill[c] >= 1; })) bloom(s2);
+      }
+      b.mode = 'idle'; b.hx = rnd(30, 330); b.hy = rnd(290, 380);
+    } else if (b.mode === 'idle') {
+      b.wt -= dt; if (b.wt <= 0) { b.wt = rnd(1.5, 3); b.hx = rnd(30, 330); b.hy = rnd(290, 380); }
+      b.next -= dt;
+      if (b.next <= 0) {
+        var pend = seeds.filter(function (q) { return !q.done; });
+        if (pend.length) { b.seed = pend[Math.floor(Math.random() * pend.length)]; b.mode = 'go'; }
+        b.next = Math.max(4, 14 - 1.8 * st.up.bee);
+      }
+    }
+  }
+  function drawBee() {
+    var b = bee, fl = Math.abs(Math.sin(tAll * 30)) * 5 + 2;
+    ctx.save(); ctx.translate(b.x, b.y + Math.sin(tAll * 6) * 2); ctx.scale(b.dir, 1);
+    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    ctx.beginPath(); ctx.ellipse(-2, -6, fl, 3.5, -0.5, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(3, -6, fl, 3.5, 0.5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#ffd23f'; ctx.beginPath(); ctx.ellipse(0, 0, 9, 6.5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#2b3a55'; ctx.fillRect(-3, -6, 2.4, 12); ctx.fillRect(2, -5.5, 2.4, 11);
+    ctx.fillStyle = '#ffd23f'; circle(9, -1, 4.2);
+    ctx.fillStyle = '#2b3a55'; circle(10.5, -2, 1); ctx.fillRect(-12, -1, 4, 2);
+    ctx.restore();
+  }
+
+  /* ---------- etkinlik, haftalık hedef, albüm ---------- */
+  var EVTS = [
+    { id: 'sugar', name: 'Şeker Fırtınası', desc: 'Her çiçek şeker gibi tatlı.', col: '#ff7eb6', cos: 'icecream', costName: 'Dondurma şapkası' },
+    { id: 'starnight', name: 'Yıldız Gecesi', desc: 'Gökyüzü yıldızlarla doluyor.', col: '#7a5be0', cos: 'halo', costName: 'Yıldız halesi' },
+    { id: 'bloomfest', name: 'Çiçek Festivali', desc: 'Bahar bayram yerine dönüyor.', col: '#ff9a4d', cos: 'wings', costName: 'Kelebek kanatları' },
+    { id: 'snowfest', name: 'Kar Şenliği', desc: 'Her yer bembeyaz.', col: '#3fa9e0', cos: 'snowflake', costName: 'Kar tanesi tacı' }
+  ];
+  var MS = [{ at: 20, kind: 'gold', amt: 30 }, { at: 50, kind: 'cos' }, { at: 100, kind: 'gold', amt: 100 }];
+  var evtC = null;
+  function evtInfo() {
+    var n = Date.now(); if (evtC && n - evtC.t < 4000) return evtC.v;
+    var d = new Date(), dow = d.getDay(), active = dow === 5 || dow === 6 || dow === 0, start, end, ms;
+    if (active) { var back = dow === 5 ? 0 : dow === 6 ? 1 : 2; start = new Date(d.getFullYear(), d.getMonth(), d.getDate() - back); end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 3); ms = end - d; }
+    else { var fwd = (5 - dow + 7) % 7; start = new Date(d.getFullYear(), d.getMonth(), d.getDate() + fwd); ms = start - d; }
+    var idx = Math.floor(Date.UTC(start.getFullYear(), start.getMonth(), start.getDate()) / 86400000 / 7) % 4;
+    var v = { active: active, id: dayStr(start), def: EVTS[idx], ms: ms };
+    evtC = { t: n, v: v }; return v;
+  }
+  function evtMult() { return evtInfo().active ? 1.25 : 1; }
+  function ensureEvt() { var i = evtInfo(); if (i.active && st.evt.id !== i.id) st.evt = { id: i.id, pts: 0, claimed: {} }; return i; }
+  function evtAdd(n) { var i = ensureEvt(); if (i.active) st.evt.pts += n; }
+  function fmtLeft(ms) { var h = Math.floor(ms / 3600000); return h >= 24 ? Math.floor(h / 24) + ' gün ' + (h % 24) + ' sa' : h + ' sa ' + Math.floor(ms % 3600000 / 60000) + ' dk'; }
+
+  var WPOOL = [
+    { t: 'any', n: 120, r: 50, text: 'Bu hafta 120 çiçek aç' },
+    { t: 'tier', n: 10, r: 50, text: 'Bu hafta 10 kademe bitir' },
+    { t: 'star', n: 25, r: 40, text: 'Bu hafta 25 yıldız yakala' },
+    { t: 'refill', n: 60, r: 40, text: 'Bu hafta bulutları 60 kez doldur' }
+  ];
+  function ensureWeek() {
+    var d = new Date(), dow = (d.getDay() + 6) % 7, ws = new Date(d.getFullYear(), d.getMonth(), d.getDate() - dow), id = dayStr(ws);
+    if (st.week.id === id) return;
+    var wn = Math.floor(Date.UTC(ws.getFullYear(), ws.getMonth(), ws.getDate()) / 86400000 / 7);
+    st.week = { id: id, goals: [0, 1, 2].map(function (k) { var g = WPOOL[(wn + k) % 4]; return { t: g.t, n: g.n, r: g.r, text: g.text, p: 0, claimed: false }; }) };
+  }
+  function weeklyAdd(t, a) { ensureWeek(); st.week.goals.forEach(function (g) { if (g.t === t && g.p < g.n) g.p = Math.min(g.n, g.p + a); }); }
+
+  var ALBUM_AT = [10, 25, 50, 100], ALBUM_R = [8, 15, 30, 60];
+  function renderMeta() {
+    var ready = 0, info = ensureEvt(), d = info.def, eb = $('eventBox'); eb.innerHTML = '';
+    var erow = document.createElement('div'), canAny = false;
+    if (info.active) {
+      var ms = '';
+      MS.forEach(function (m) {
+        var done = !!st.evt.claimed[m.at], can = !done && st.evt.pts >= m.at; if (can) { ready++; canAny = true; }
+        ms += '<button data-ms="' + m.at + '"' + (can ? '' : ' disabled') + '>' + (done ? 'Alındı' : m.at + ' puan · ' + (m.kind === 'cos' ? d.costName : '+' + m.amt)) + '</button>';
+      });
+      erow.innerHTML = '<div class="row-t"><b>' + d.name + '<em class="tag">Hafta sonu</em></b><span>' + d.desc + ' Bütün ödüller +%25. Çiçek açtıkça puan toplarsın.</span><span>Kalan: ' + fmtLeft(info.ms) + ' · Puan: ' + st.evt.pts + ' / 100</span><div class="bar"><i style="width:' + Math.min(100, st.evt.pts) + '%"></i></div><div class="ms">' + ms + '</div></div>';
+    } else {
+      erow.innerHTML = '<div class="row-t"><b>Sıradaki etkinlik: ' + d.name + '</b><span>' + d.desc + ' Cuma günü başlar, ' + fmtLeft(info.ms) + ' sonra.</span><span>Ödül kostümü: ' + d.costName + '</span></div>';
+    }
+    erow.className = 'row' + (canAny ? ' ready' : ''); eb.appendChild(erow);
+
+    ensureWeek();
+    var wl2 = $('weeklyList'); wl2.innerHTML = '';
+    st.week.goals.forEach(function (g, i) {
+      var done = g.p >= g.n, can = done && !g.claimed; if (can) ready++;
+      var row = document.createElement('div'); row.className = 'row' + (can ? ' ready' : '');
+      row.innerHTML = '<div class="row-t"><b>' + g.text + '</b><span>' + g.p + ' / ' + g.n + '</span><div class="bar"><i style="width:' + (g.p / g.n * 100) + '%"></i></div></div><button class="buy" data-wk="' + i + '"' + (can ? '' : ' disabled') + '>' + (g.claimed ? 'Alındı' : done ? 'Al · ' + Math.round(g.r * luckF()) : 'Devam') + '</button>';
+      wl2.appendChild(row);
+    });
+
+    var al = $('albumList'); al.innerHTML = '';
+    KEYS.forEach(function (k) {
+      var n = st.album.n[k] || 0, c = st.album.c[k] || 0, nxt = ALBUM_AT[c], can = nxt !== undefined && n >= nxt; if (can) ready++;
+      var prev = c > 0 ? ALBUM_AT[c - 1] : 0, pr = nxt === undefined ? 100 : Math.min(100, (n - prev) / (nxt - prev) * 100);
+      var row = document.createElement('div'); row.className = 'row' + (can ? ' ready' : '');
+      row.innerHTML = '<span class="adot" style="background:' + HEX[k] + '"></span><div class="row-t"><b>' + NAMES[k] + ' çiçek · ' + n + '</b><span>' + (nxt === undefined ? 'Albüm tamamlandı!' : 'Sonraki hedef: ' + nxt + ' çiçek') + '</span><div class="bar"><i style="width:' + pr + '%"></i></div></div><button class="buy" data-al="' + k + '"' + (can ? '' : ' disabled') + '>' + (nxt === undefined ? 'Tamam' : can ? 'Al · ' + ALBUM_R[c] : 'Devam') + '</button>';
+      al.appendChild(row);
+    });
+    return ready;
+  }
+  $('eventBox').addEventListener('click', function (e) {
+    var b = e.target.closest('button[data-ms]'); if (!b || b.disabled) return;
+    var at = +b.getAttribute('data-ms'), info = ensureEvt(); if (!info.active || st.evt.claimed[at] || st.evt.pts < at) return;
+    var m = MS.filter(function (x) { return x.at === at; })[0]; if (!m) return;
+    st.evt.claimed[at] = true;
+    if (m.kind === 'gold') { earn(m.amt); say('Etkinlik ödülü: +' + m.amt + ' damla!'); }
+    else { st.cos.owned[info.def.cos] = true; say(info.def.costName + ' kostümü kazandın! Mağazadan giydir.'); }
+    buySound(); updateUI(); save();
+  });
+  $('weeklyList').addEventListener('click', function (e) {
+    var b = e.target.closest('button[data-wk]'); if (!b || b.disabled) return;
+    var g = st.week.goals[+b.getAttribute('data-wk')]; if (!g || g.claimed || g.p < g.n) return;
+    var r = Math.round(g.r * luckF()); g.claimed = true; earn(r); say('Haftalık hedef tamam! +' + r + ' damla'); buySound(); updateUI(); save();
+  });
+  $('albumList').addEventListener('click', function (e) {
+    var b = e.target.closest('button[data-al]'); if (!b || b.disabled) return;
+    var k = b.getAttribute('data-al'), c = st.album.c[k] || 0, nxt = ALBUM_AT[c];
+    if (nxt === undefined || (st.album.n[k] || 0) < nxt) return;
+    st.album.c[k] = c + 1; earn(ALBUM_R[c]); say(NAMES[k] + ' albümü: +' + ALBUM_R[c] + ' damla!'); buySound(); updateUI(); save();
+  });
+
   function drawParts() {
     parts.forEach(function (q) {
       ctx.globalAlpha = Math.max(0, 1 - q.life / q.max);
@@ -1417,6 +1683,7 @@ canvas {
   }
   function drawHUD() {
     var y = 18;
+    var ei = evtInfo(); if (ei.active) { pill(170, y, ei.def.name + ' · ödüller +%25', ei.def.col); y += 28; }
     if (ev) { pill(170, y, ev.def.name + ' · ' + Math.ceil(ev.left) + ' sn', ev.def.good ? '#3fae5b' : '#e0783a'); y += 28; }
     if (calmT > 0) { pill(170, y, 'Dinginlik · ' + Math.ceil(calmT) + ' sn', '#4a9fe0'); y += 28; }
     if (st.buffs.reward > 0) { pill(170, y, 'Tılsım ×1,5 · ' + Math.ceil(st.buffs.reward) + ' sn', '#c98a00'); y += 28; }
@@ -1478,6 +1745,7 @@ canvas {
       ctx.save(); ctx.translate(s.x, s.y + 14); ctx.scale(k, k); ctx.translate(-s.x, -(s.y + 14)); drawSeed(s); ctx.restore();
     });
     flies.forEach(drawFly);
+    if (st.up.bee > 0) drawBee();
     drops.forEach(dropShape);
     clouds.slice().sort(function (a, b) { return a.y - b.y; }).forEach(drawCloud);
     seeds.forEach(drawBubble);
@@ -1486,16 +1754,19 @@ canvas {
 
   /* ---------- başlat ---------- */
   buildUps(); newGarden(); updateUI(); updateAbil();
+  checkOffline();
   if (giftReady()) { say('Günlük hediyen hazır! Görevler sekmesinden al.'); showToast('Günlük hediye hazır!', 'Görevler sekmesinden ödülünü al.', 'quests'); }
   else say('Bir bulutu sürükle ve susayan çiçeklere yağmur yağdır. Su bitince bulutu ' + liquidTo() + ' götür.');
   var last = performance.now(), saveAcc = 0;
   function frame(now) {
+    if (now - last > 15000) checkOffline();
     var dt = Math.min(0.05, (now - last) / 1000); last = now;
     update(dt); draw();
     saveAcc += dt; if (saveAcc > 15) { saveAcc = 0; save(); }
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
+  document.addEventListener('visibilitychange', function () { if (document.hidden) save(); else checkOffline(); });
 })();
 </script>
 
