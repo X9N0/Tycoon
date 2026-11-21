@@ -299,10 +299,10 @@ canvas {
   /* ---------- evrenler ---------- */
   var WORLDS = [
     { id: 'sky', name: 'Gökyüzü', tag: 'Bulutların evi', desc: 'Her şeyin başladığı yer. Gündüz, gün batımı ve gece gökyüzü.', cost: 0, perk: 'Özel güç yok, dengeli oyun.', mods: {}, to: 'denize' },
-    { id: 'moon', name: 'Ay Evreni', tag: 'Düşük yerçekimi', desc: 'Kraterler arasında, uzaktaki Dünya\'nın ışığında çiçek yetiştir.', cost: 1000, need: 10, perk: 'Bulutlar %15 daha az su harcar, rüzgar yarı güçte.', mods: { drain: 0.85, wind: 0.5 }, to: 'yıldız suyu gölüne' },
-    { id: 'ice', name: 'Buz Krallığı', tag: 'Donmuş toprak', desc: 'Kar yağan, kutup ışıklarıyla aydınlanan sessiz bir diyar.', cost: 10000, need: 20, perk: 'Çiçekler hiç solmaz, ama su %10 daha yavaş dolar.', mods: { decay: 0, fill: 0.9 }, to: 'buz gölüne' },
-    { id: 'candy', name: 'Şeker Diyarı', tag: 'Tatlı bereket', desc: 'Pamuk bulutlar, lolipop güneş ve şerbet nehirleri.', cost: 100000, need: 35, perk: 'Damla ödülleri %25 artar, su %10 daha yavaş dolar.', mods: { reward: 1.25, fill: 0.9 }, to: 'şerbet nehrine' },
-    { id: 'space', name: 'Uzay', tag: 'Kozmik enerji', desc: 'Halkalı gezegenler, bulutsular ve parlayan kristaller.', cost: 1000000, need: 55, perk: 'Damla ödülleri %50 artar, bulutlar %20 daha çabuk susar. Rüzgar yok.', mods: { reward: 1.5, drain: 1.2, wind: 0 }, to: 'plazma havuzuna' }
+    { id: 'moon', name: 'Ay Evreni', tag: 'Düşük yerçekimi', desc: 'Kraterler arasında, uzaktaki Dünya\'nın ışığında çiçek yetiştir.', cost: 3000, need: 12, perk: 'Bulutlar %15 daha az su harcar, rüzgar yarı güçte.', mods: { drain: 0.85, wind: 0.5 }, to: 'yıldız suyu gölüne' },
+    { id: 'ice', name: 'Buz Krallığı', tag: 'Donmuş toprak', desc: 'Kar yağan, kutup ışıklarıyla aydınlanan sessiz bir diyar.', cost: 50000, need: 25, perk: 'Çiçekler hiç solmaz, ama su %10 daha yavaş dolar.', mods: { decay: 0, fill: 0.9 }, to: 'buz gölüne' },
+    { id: 'candy', name: 'Şeker Diyarı', tag: 'Tatlı bereket', desc: 'Pamuk bulutlar, lolipop güneş ve şerbet nehirleri.', cost: 500000, need: 40, perk: 'Damla ödülleri %25 artar, su %10 daha yavaş dolar.', mods: { reward: 1.25, fill: 0.9 }, to: 'şerbet nehrine' },
+    { id: 'space', name: 'Uzay', tag: 'Kozmik enerji', desc: 'Halkalı gezegenler, bulutsular ve parlayan kristaller.', cost: 5000000, need: 60, perk: 'Damla ödülleri %50 artar, bulutlar %20 daha çabuk susar. Rüzgar yok.', mods: { reward: 1.5, drain: 1.2, wind: 0 }, to: 'plazma havuzuna' }
   ];
   function worldById(id) { for (var i = 0; i < WORLDS.length; i++) if (WORLDS[i].id === id) return WORLDS[i]; return WORLDS[0]; }
   function WM(k) { var m = worldById(st.world).mods; return m[k] !== undefined ? m[k] : 1; }
@@ -325,16 +325,16 @@ canvas {
   };
   function D() { return DIFF[st.set.diff] || DIFF.normal; }
   var UPS = [
-    { id: 'power', name: 'Yağmur gücü', desc: 'Her damla çiçeği daha çok sular.', base: 24, g: 1.6, max: 10 },
-    { id: 'tank', name: 'Büyük bulut', desc: 'Bulutun suyu daha geç biter.', base: 24, g: 1.6, max: 10 },
-    { id: 'refill', name: 'Hızlı dolum', desc: 'Denizde bulut çabuk dolar.', base: 18, g: 1.6, max: 10 },
-    { id: 'wide', name: 'Geniş yağmur', desc: 'Yağmur daha geniş alana düşer.', base: 30, g: 1.6, max: 10 },
-    { id: 'idle', name: 'Bulut uykusu', desc: 'Gökte boşta duran bulutlar yavaşça dolar.', base: 36, g: 1.6, max: 10 },
-    { id: 'luck', name: 'Altın dokunuş', desc: 'Çiçekler ve görevler daha çok damla verir. Sınırsız!', base: 45, g: 1.3, max: Infinity, inc: true },
-    { id: 'cool', name: 'Hızlı yetenek', desc: 'Yetenekler daha çabuk hazır olur.', base: 36, g: 1.6, max: 10 },
-    { id: 'bee', name: 'Çalışkan arı', desc: 'Bir arı susayan çiçekleri senin yerine sular.', base: 60, g: 1.6, max: 10 },
-    { id: 'dream', name: 'Rüya bulutu', desc: 'Sen yokken dakikada daha çok damla biriktirir. Sınırsız!', base: 50, g: 1.3, max: Infinity, inc: true },
-    { id: 'vault', name: 'Uyku kasası', desc: 'Çevrimdışı birikim süresini uzatır: her seviye +1 saat.', base: 40, g: 1.35, max: 22 }
+    { id: 'power', name: 'Yağmur gücü', desc: 'Her damla çiçeği daha çok sular.', base: 24, g: 1.7, max: 10 },
+    { id: 'tank', name: 'Büyük bulut', desc: 'Bulutun suyu daha geç biter.', base: 24, g: 1.7, max: 10 },
+    { id: 'refill', name: 'Hızlı dolum', desc: 'Denizde bulut çabuk dolar.', base: 18, g: 1.7, max: 10 },
+    { id: 'wide', name: 'Geniş yağmur', desc: 'Yağmur daha geniş alana düşer.', base: 30, g: 1.7, max: 10 },
+    { id: 'idle', name: 'Bulut uykusu', desc: 'Gökte boşta duran bulutlar yavaşça dolar.', base: 36, g: 1.7, max: 10 },
+    { id: 'luck', name: 'Altın dokunuş', desc: 'Çiçekler ve görevler daha çok damla verir. Sınırsız!', base: 45, g: 1.35, max: Infinity, inc: true },
+    { id: 'cool', name: 'Hızlı yetenek', desc: 'Yetenekler daha çabuk hazır olur.', base: 36, g: 1.7, max: 10 },
+    { id: 'bee', name: 'Çalışkan arı', desc: 'Bir arı susayan çiçekleri senin yerine sular.', base: 60, g: 1.7, max: 10 },
+    { id: 'dream', name: 'Rüya bulutu', desc: 'Sen yokken dakikada daha çok damla biriktirir. Sınırsız!', base: 50, g: 1.35, max: Infinity, inc: true },
+    { id: 'vault', name: 'Uyku kasası', desc: 'Çevrimdışı birikim süresini uzatır: her seviye +1 saat.', base: 40, g: 1.4, max: 22 }
   ];
   function upCost(u, lv) { return Math.round(u.base * CK * Math.pow(u.g, lv === undefined ? st.up[u.id] : lv)); }
   function luckF() { return (1 + 0.15 * st.up.luck) * msF(st.up.luck); }
@@ -346,7 +346,7 @@ canvas {
     return { n: n, cost: n ? cost : upCost(u) };
   }
   function canUp(u) { return st.up[u.id] < u.max && st.gold >= upCost(u); }
-  function tg() { return Math.pow(1.12, st.garden - 1); }
+  function tg() { return Math.pow(1.11, st.garden - 1); }
   function isBoss() { return st.garden >= 5 && st.garden % 5 === 0; }
   function waveF() { var m = st.garden % 5; if (st.garden >= 5 && m === 0) return 1.15; if (st.garden > 5 && (m === 1 || m === 2)) return 0.88; return 1; }
   function tierF() { return Math.min(4.5, 1 + 0.14 * (st.garden - 1)) * waveF(); }
