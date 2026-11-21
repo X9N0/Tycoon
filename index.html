@@ -116,6 +116,22 @@ canvas {
 .bulk button { flex: 1; background: transparent; border: 0; min-height: 40px; color: var(--ink); font: 800 13px var(--font-body); cursor: pointer; }
 .bulk button[aria-pressed="true"] { background: var(--pink); color: #fff; }
 .lvl { font: 700 12px var(--font-body); color: var(--muted); margin-top: 3px; }
+.wmap { flex: none; position: relative; height: 170px; border-radius: 16px; background: linear-gradient(180deg, #bfe6ff, #e9f7ff); border: 2px solid var(--line); overflow: hidden; }
+.wmap svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.wnode { position: absolute; transform: translate(-50%, -50%); width: 64px; background: transparent; border: 0; padding: 0; display: flex; flex-direction: column; align-items: center; gap: 2px; cursor: pointer; color: var(--ink); font: 800 11px var(--font-body); }
+.wnode .wdot { width: 42px; height: 42px; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 3px 8px rgba(0,0,0,0.25); }
+.wnode .ws { font: 700 10px var(--font-body); color: var(--muted); }
+.wnode.lock .wdot { filter: grayscale(0.85) brightness(0.9); }
+.wnode.cur .wdot { box-shadow: 0 0 0 3px var(--pink), 0 3px 8px rgba(0,0,0,0.25); }
+.wnode.sel .wdot { margin-bottom: 4px; transform: scale(1.12); box-shadow: 0 0 0 3px #1d3b63, 0 3px 8px rgba(0,0,0,0.25); }
+.wnode.can .wdot { animation: wpulse 1.4s ease-in-out infinite; }
+@keyframes wpulse { 50% { box-shadow: 0 0 0 7px rgba(255,95,141,0.35), 0 3px 8px rgba(0,0,0,0.25); } }
+.wpv { flex: none; display: flex; gap: 12px; align-items: stretch; background: var(--soft); border-radius: 16px; padding: 10px; }
+.wpv canvas { flex: none; width: 126px; height: 196px; border-radius: 12px; border: 2px solid #fff; background: #bfe6ff; }
+.wpv-i { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.wpv-i b { font-family: var(--font-display); font-size: 17px; }
+.wpv-i span { font-size: 12px; color: var(--muted); }
+.wpv-i .buy { margin-top: auto; }
 .seg { display: inline-flex; flex-wrap: wrap; border: 2px solid var(--line); border-radius: 12px; overflow: hidden; }
 .seg button { background: transparent; border: 0; padding: 8px 12px; min-height: 44px; color: var(--ink); font: 700 13px var(--font-body); cursor: pointer; }
 .seg button[aria-pressed="true"] { background: var(--pink); color: #fff; }
@@ -200,7 +216,9 @@ canvas {
 
   <section class="panel" id="panel-worlds" role="tabpanel" hidden>
     <h2>Evrenler</h2>
-    <p class="sub">Her evren, bir öncekinde yeterince kademe bitirince açılır. Sonra damlayla satın alırsın. Her evrenin kendi görünümü ve özel gücü var.</p>
+    <p class="sub">Her evren, bir öncekinde yeterince kademe bitirince açılır. Sonra damlayla satın alırsın. Haritadan bir evrene dokun, önizlemesini gör.</p>
+    <div class="wmap" id="wmap"></div>
+    <div class="wpv"><canvas id="wpvCv" width="252" height="392"></canvas><div class="wpv-i" id="wpvInfo"></div></div>
     <div id="worldList"></div>
   </section>
 
@@ -624,6 +642,7 @@ canvas {
       row.innerHTML = '<div class="row-t"><b>' + w.name + (can ? '<em class="tag">Açılabilir</em>' : '') + '</b><span>' + w.desc + '</span><span><b style="font-weight:700;color:var(--ink)">' + w.tag + ':</b> ' + w.perk + '</span>' + lockHtml + '</div><button class="buy" data-w="' + w.id + '"' + (cur || (!own && !can) ? ' disabled' : '') + '>' + (cur ? 'Seçili' : own ? 'Git' : !unl ? 'Kilitli' : 'Aç · ' + fmt(wcost(w))) + '</button>';
       wl.appendChild(row);
     });
+    buildWorldMap();
     $('tabWorlds').innerHTML = 'Evrenler' + (wReady.length ? '<span class="badge">' + wReady.length + '</span>' : '');
     var curW = {}; wReady.forEach(function (w) { curW[w.id] = true; });
     if (notifiedW !== null) {
@@ -680,7 +699,7 @@ canvas {
     tierStartSound(); say(w.name + ': ' + w.perk);
     updateUI(); save();
   }
-  $('worldList').addEventListener('click', function (e) {
+  function onWorldBtn(e) {
     var b = e.target.closest('button[data-w]'); if (!b || b.disabled) return;
     var w = worldById(b.getAttribute('data-w'));
     if (!st.worlds[w.id]) {
@@ -688,6 +707,12 @@ canvas {
       st.gold -= wcost(w); st.worlds[w.id] = true; buySound();
     }
     setWorld(w.id);
+  }
+  $('worldList').addEventListener('click', onWorldBtn);
+  $('wpvInfo').addEventListener('click', onWorldBtn);
+  $('wmap').addEventListener('click', function (e) {
+    var b = e.target.closest('button[data-pv]'); if (!b) return;
+    pvW = b.getAttribute('data-pv'); updateUI();
   });
   $('goldChip').addEventListener('click', function () { openTab('ups'); });
   $('toastX').addEventListener('click', hideToast);
@@ -1799,6 +1824,43 @@ canvas {
     drawParts(); drawStars(); drawFloats(); drawHUD(); drawOverlay();
   }
 
+  /* ---------- evren haritası ve önizleme ---------- */
+  var pvW = null, WPOS = { sky: [10, 70], moon: [30, 32], ice: [50, 70], candy: [70, 32], space: [90, 68] };
+  var pvSeeds = [
+    { x: 80, y: 455, key: 'p', need: ['p'], fill: { p: 1 }, done: true, t: 5, row: 0, idle: 0, born: 1 },
+    { x: 180, y: 455, key: 'b', need: ['b'], fill: { b: 1 }, done: true, t: 5, row: 0, idle: 0, born: 1 },
+    { x: 280, y: 455, key: 'y', need: ['y'], fill: { y: 0.55 }, done: false, t: 0, row: 0, idle: 0, born: 1 }
+  ];
+  var pvCloud = mkCloud(150, 255, 'p', 0);
+  function wTop(w) { var v = WVIS[w.id] || THEMES.day; return [v.top, v.bot]; }
+  function buildWorldMap() {
+    if (!pvW) pvW = st.world;
+    var h = '<svg viewBox="0 0 100 100" preserveAspectRatio="none"><polyline fill="none" stroke="#fff" stroke-width="3" stroke-dasharray="2 3" stroke-linecap="round" vector-effect="non-scaling-stroke" points="' + WORLDS.map(function (w) { return WPOS[w.id][0] + ',' + WPOS[w.id][1]; }).join(' ') + '"/></svg>';
+    WORLDS.forEach(function (w) {
+      var own = !!st.worlds[w.id], unl = own || unlocked(w), can = !own && unl && st.gold >= wcost(w), tc = wTop(w);
+      var cls = 'wnode' + (st.world === w.id ? ' cur' : '') + (pvW === w.id ? ' sel' : '') + (!unl ? ' lock' : '') + (can ? ' can' : '');
+      h += '<button class="' + cls + '" data-pv="' + w.id + '" style="left:' + WPOS[w.id][0] + '%;top:' + WPOS[w.id][1] + '%"><span class="wdot" style="background:linear-gradient(180deg,' + tc[0] + ',' + tc[1] + ')"></span><span>' + w.name + '</span><span class="ws">' + (st.world === w.id ? 'Seçili' : own ? 'Açık' : can ? 'Açılabilir' : unl ? 'Satın al' : 'Kilitli') + '</span></button>';
+    });
+    $('wmap').innerHTML = h;
+    var w = worldById(pvW), own = !!st.worlds[w.id], cur = st.world === w.id, unl = own || unlocked(w), can = !own && unl && st.gold >= wcost(w), pv = wprev(w);
+    var status = own ? 'Evren seviyesi ' + wlvl(w.id) + ' · bonus ×' + wmF(w.id).toFixed(2).replace('.', ',') : !unl ? 'Kilitli: ' + pv.name + ' evreninde ' + w.need + ' kademe bitir (' + Math.min(wlvl(pv.id), w.need) + ' / ' + w.need + ')' : 'Fiyat: ' + fmt(wcost(w)) + ' damla';
+    $('wpvInfo').innerHTML = '<b>' + w.name + '</b><span>' + w.tag + ': ' + w.perk + '</span><span>' + status + '</span><button class="buy" data-w="' + w.id + '"' + (cur || (!own && !can) ? ' disabled' : '') + '>' + (cur ? 'Seçili' : own ? 'Git' : !unl ? 'Kilitli' : 'Aç · ' + fmt(wcost(w))) + '</button>';
+  }
+  function renderWorldPreview() {
+    var pc = $('wpvCv'); if (!pc || !pvW || $('panel-worlds').hidden) return;
+    var main = ctx, c2 = pc.getContext('2d'), sw = st.world, sev = ev;
+    ctx = c2; st.world = pvW; ev = null;
+    try {
+      c2.save(); c2.clearRect(0, 0, pc.width, pc.height); c2.scale(pc.width / W, pc.height / H);
+      c2.beginPath(); c2.rect(0, 0, W, H); c2.clip();
+      drawBackground(); drawGround();
+      pvSeeds.forEach(drawSeed);
+      pvCloud.water = 0.85; drawCloud(pvCloud);
+      c2.restore();
+    } catch (err) { try { c2.restore(); } catch (e2) {} }
+    ctx = main; st.world = sw; ev = sev;
+  }
+
   /* ---------- başlat ---------- */
   buildUps(); newGarden(); updateUI(); updateAbil();
   checkOffline();
@@ -1810,7 +1872,7 @@ canvas {
     if (now - last > 15000 || nowMs - lastTickMs > 15000) checkOffline();
     lastTickMs = nowMs;
     var dt = Math.min(0.05, (now - last) / 1000); last = now;
-    update(dt); draw();
+    update(dt); draw(); renderWorldPreview();
     saveAcc += dt; if (saveAcc > 15) { saveAcc = 0; save(); }
     requestAnimationFrame(frame);
   }
