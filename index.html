@@ -299,16 +299,20 @@ canvas {
   /* ---------- evrenler ---------- */
   var WORLDS = [
     { id: 'sky', name: 'Gökyüzü', tag: 'Bulutların evi', desc: 'Her şeyin başladığı yer. Gündüz, gün batımı ve gece gökyüzü.', cost: 0, perk: 'Özel güç yok, dengeli oyun.', mods: {}, to: 'denize' },
-    { id: 'moon', name: 'Ay Evreni', tag: 'Düşük yerçekimi', desc: 'Kraterler arasında, uzaktaki Dünya\'nın ışığında çiçek yetiştir.', cost: 300, need: 5, perk: 'Bulutlar %15 daha az su harcar, rüzgar yarı güçte.', mods: { drain: 0.85, wind: 0.5 }, to: 'yıldız suyu gölüne' },
-    { id: 'ice', name: 'Buz Krallığı', tag: 'Donmuş toprak', desc: 'Kar yağan, kutup ışıklarıyla aydınlanan sessiz bir diyar.', cost: 600, need: 6, perk: 'Çiçekler hiç solmaz, ama su %10 daha yavaş dolar.', mods: { decay: 0, fill: 0.9 }, to: 'buz gölüne' },
-    { id: 'candy', name: 'Şeker Diyarı', tag: 'Tatlı bereket', desc: 'Pamuk bulutlar, lolipop güneş ve şerbet nehirleri.', cost: 1000, need: 7, perk: 'Damla ödülleri %25 artar, su %10 daha yavaş dolar.', mods: { reward: 1.25, fill: 0.9 }, to: 'şerbet nehrine' },
-    { id: 'space', name: 'Uzay', tag: 'Kozmik enerji', desc: 'Halkalı gezegenler, bulutsular ve parlayan kristaller.', cost: 1600, need: 8, perk: 'Damla ödülleri %50 artar, bulutlar %20 daha çabuk susar. Rüzgar yok.', mods: { reward: 1.5, drain: 1.2, wind: 0 }, to: 'plazma havuzuna' }
+    { id: 'moon', name: 'Ay Evreni', tag: 'Düşük yerçekimi', desc: 'Kraterler arasında, uzaktaki Dünya\'nın ışığında çiçek yetiştir.', cost: 1000, need: 10, perk: 'Bulutlar %15 daha az su harcar, rüzgar yarı güçte.', mods: { drain: 0.85, wind: 0.5 }, to: 'yıldız suyu gölüne' },
+    { id: 'ice', name: 'Buz Krallığı', tag: 'Donmuş toprak', desc: 'Kar yağan, kutup ışıklarıyla aydınlanan sessiz bir diyar.', cost: 10000, need: 20, perk: 'Çiçekler hiç solmaz, ama su %10 daha yavaş dolar.', mods: { decay: 0, fill: 0.9 }, to: 'buz gölüne' },
+    { id: 'candy', name: 'Şeker Diyarı', tag: 'Tatlı bereket', desc: 'Pamuk bulutlar, lolipop güneş ve şerbet nehirleri.', cost: 100000, need: 35, perk: 'Damla ödülleri %25 artar, su %10 daha yavaş dolar.', mods: { reward: 1.25, fill: 0.9 }, to: 'şerbet nehrine' },
+    { id: 'space', name: 'Uzay', tag: 'Kozmik enerji', desc: 'Halkalı gezegenler, bulutsular ve parlayan kristaller.', cost: 1000000, need: 55, perk: 'Damla ödülleri %50 artar, bulutlar %20 daha çabuk susar. Rüzgar yok.', mods: { reward: 1.5, drain: 1.2, wind: 0 }, to: 'plazma havuzuna' }
   ];
   function worldById(id) { for (var i = 0; i < WORLDS.length; i++) if (WORLDS[i].id === id) return WORLDS[i]; return WORLDS[0]; }
   function WM(k) { var m = worldById(st.world).mods; return m[k] !== undefined ? m[k] : 1; }
   function liquidTo() { return worldById(st.world).to; }
   function wcost(w) { return st.set.test ? 0 : w.cost * CK; }
   function wlvl(id) { return st.wlv[id] || 0; }
+  var WMS = [10, 25, 50, 100];
+  function wmCount(id) { var c = 0, l = wlvl(id); WMS.forEach(function (m) { if (l >= m) c++; }); return c; }
+  function wmF(id) { return Math.pow(1.5, wmCount(id)); }
+  function wmNext(id) { var l = wlvl(id); for (var i = 0; i < WMS.length; i++) if (WMS[i] > l) return WMS[i]; return 0; }
   function wprev(w) { var i = WORLDS.indexOf(w); return i > 0 ? WORLDS[i - 1] : null; }
   function unlocked(w) { var pv = wprev(w); return !pv || st.set.test || wlvl(pv.id) >= (w.need || 0); }
   function ownedWorlds() { return WORLDS.filter(function (w) { return w.id !== 'sky' && st.worlds[w.id]; }).length; }
@@ -367,7 +371,7 @@ canvas {
   function windStr() { return st.garden >= 3 ? Math.min(70, 12 * (st.garden - 2)) * D().wind * WM('wind') : 0; }
   function windNow() { return calmT > 0 ? 0 : windStr() * evMod('wind') * Math.sin(tAll * 0.5); }
   function money(n) {
-    var v = n * CK * tg() * msF(st.garden) * D().reward * luckF() * evMod('reward') * WM('reward') * (st.buffs.reward > 0 ? 1.5 : 1) * prestigeMult() * evtMult(), f = Math.floor(v);
+    var v = n * CK * tg() * msF(st.garden) * wmF(st.world) * D().reward * luckF() * evMod('reward') * WM('reward') * (st.buffs.reward > 0 ? 1.5 : 1) * prestigeMult() * evtMult(), f = Math.floor(v);
     return Math.max(1, f + (Math.random() < v - f ? 1 : 0));
   }
   function tierNote() {
@@ -615,7 +619,7 @@ canvas {
       if (can) wReady.push(w);
       var lockHtml = '';
       if (!unl) lockHtml = '<span><b style="font-weight:700;color:var(--ink)">Kilitli:</b> ' + pv.name + ' evreninde ' + w.need + ' kademe bitir (' + Math.min(wlvl(pv.id), w.need) + ' / ' + w.need + ')</span><div class="bar"><i style="width:' + Math.min(100, wlvl(pv.id) / w.need * 100) + '%"></i></div>';
-      else if (own) lockHtml = '<span>Bu evrende bitirilen kademe: ' + wlvl(w.id) + '</span>';
+      else if (own) lockHtml = '<span>Evren seviyesi: ' + wlvl(w.id) + ' · bonus ×' + wmF(w.id).toFixed(2).replace('.', ',') + (wmNext(w.id) ? ' · ×1,5 daha: sv. ' + wmNext(w.id) : ' · en üst') + '</span>';
       var row = document.createElement('div'); row.className = 'row' + (can ? ' ready' : '');
       row.innerHTML = '<div class="row-t"><b>' + w.name + (can ? '<em class="tag">Açılabilir</em>' : '') + '</b><span>' + w.desc + '</span><span><b style="font-weight:700;color:var(--ink)">' + w.tag + ':</b> ' + w.perk + '</span>' + lockHtml + '</div><button class="buy" data-w="' + w.id + '"' + (cur || (!own && !can) ? ' disabled' : '') + '>' + (cur ? 'Seçili' : own ? 'Git' : !unl ? 'Kilitli' : 'Aç · ' + fmt(wcost(w))) + '</button>';
       wl.appendChild(row);
@@ -833,6 +837,7 @@ canvas {
     if (seeds.every(function (x) { return x.done; }) && gardenTimer <= 0) {
       gardenTimer = 2.4; st.stats.tiers++; weeklyAdd('tier', 1);
       st.wlv[st.world] = wlvl(st.world) + 1;
+      if (WMS.indexOf(wlvl(st.world)) >= 0) setTimeout(function () { say(worldById(st.world).name + ' seviye ' + wlvl(st.world) + ': bu evrende kazanç ×1,5 daha!'); }, 2600);
       var nx = WORLDS[WORLDS.indexOf(worldById(st.world)) + 1];
       if (nx && !st.worlds[nx.id] && wlvl(st.world) === nx.need) showToast('Yeni evren kilidi açıldı!', nx.name + ' artık satın alınabilir.', 'worlds'); questAdd('tier', null, 1);
       var bonus = money((2 + Math.floor(st.garden / 3)) * (isBoss() ? 3 : 1));
@@ -1552,7 +1557,7 @@ canvas {
 
   var welcomeOpen = false, welcomeAmt = 0;
   function offlineCap() { return (2 + st.up.vault) * 3600; }
-  function offlineRate() { return 0.5 * CK * (1 + Math.floor((st.garden - 1) / 4)) * tg() * msF(st.garden) * dreamF() * luckF() * prestigeMult() * D().reward; }
+  function offlineRate() { return 0.5 * CK * (1 + Math.floor((st.garden - 1) / 4)) * tg() * msF(st.garden) * wmF(st.world) * dreamF() * luckF() * prestigeMult() * D().reward; }
   function checkOffline() {
     if (welcomeOpen || !st.lastSeen) return;
     var away = (Date.now() - st.lastSeen) / 1000; if (away < 300) return;
