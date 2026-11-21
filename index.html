@@ -225,7 +225,7 @@ canvas {
     var raw = localStorage.getItem(SAVE);
     if (raw) { var L = JSON.parse(raw); if (L && L.found) st = L; }
   } catch (e) {}
-  (function fix() {
+  function fix() {
     var d = defaults();
     st.gold = st.gold || 0; st.rainbows = st.rainbows || 0;
     st.up = st.up || {}; UPKEYS.forEach(function (k) { st.up[k] = st.up[k] || 0; });
@@ -238,7 +238,8 @@ canvas {
     st.set.owned = st.set.owned || { day: true }; st.set.owned.day = true;
     if (!st.ver || st.ver < 2) { st.quests = []; st.ver = 2; }
     if (st.wlv.sky === undefined) st.wlv.sky = Math.max(0, st.stats.maxTier - 1);
-  })();
+  }
+  fix();
   function save() { try { localStorage.setItem(SAVE, JSON.stringify(st)); } catch (e) {} }
   function motionReduced() { return st.set.motion === null ? sysReduce : !!st.set.motion; }
   function earn(n) { st.gold += n; st.stats.earned += n; }
@@ -644,6 +645,19 @@ canvas {
   $('vol').addEventListener('change', function () { save(); tone(784, 0.2, 0, 'triangle', 0.12); });
   $('testMode').addEventListener('change', function (e) { st.set.test = e.target.checked; updateUI(); save(); });
   $('motion').addEventListener('change', function (e) { st.set.motion = e.target.checked; save(); });
+  function resetAll() {
+    try { localStorage.removeItem(SAVE); } catch (er) {}
+    st = defaults(); fix();
+    st.quests = []; while (st.quests.length < 3) st.quests.push(newQuest());
+    clouds.length = 0; clouds.push(mkCloud(80, 120, 'p', 10), mkCloud(190, 190, 'b', -9), mkCloud(280, 130, 'y', 8));
+    drops.length = 0; parts.length = 0; flies.length = 0;
+    ev = null; evNext = 50; calmT = 0; combo = 0; comboT = 0;
+    cdLeft.sun = 0; cdLeft.herd = 0; cdLeft.calm = 0;
+    gardenTimer = 0; rainbowT = 0; tierFx = 0; petalT = 0;
+    notified = null; notifiedW = null; hideToast(); setTab(null);
+    newGarden(); updateUI(); updateAbil(); save();
+    say('Her şey sıfırlandı. Yeni bir bahçe başlıyor!');
+  }
   var resetArmed = false, resetTimer = null;
   $('resetBtn').addEventListener('click', function (e) {
     var b = e.currentTarget;
@@ -651,9 +665,8 @@ canvas {
       resetArmed = true; b.textContent = 'Emin misin? Tekrar dokun';
       resetTimer = setTimeout(function () { resetArmed = false; b.textContent = 'Tüm ilerlemeyi sıfırla'; }, 4000);
     } else {
-      clearTimeout(resetTimer);
-      try { localStorage.removeItem(SAVE); } catch (er) {}
-      location.reload();
+      clearTimeout(resetTimer); resetArmed = false; b.textContent = 'Tüm ilerlemeyi sıfırla';
+      resetAll();
     }
   });
 
