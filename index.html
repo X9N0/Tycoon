@@ -367,7 +367,7 @@ canvas {
   function windStr() { return st.garden >= 3 ? Math.min(70, 12 * (st.garden - 2)) * D().wind * WM('wind') : 0; }
   function windNow() { return calmT > 0 ? 0 : windStr() * evMod('wind') * Math.sin(tAll * 0.5); }
   function money(n) {
-    var v = n * CK * tg() * D().reward * luckF() * evMod('reward') * WM('reward') * (st.buffs.reward > 0 ? 1.5 : 1) * prestigeMult() * evtMult(), f = Math.floor(v);
+    var v = n * CK * tg() * msF(st.garden) * D().reward * luckF() * evMod('reward') * WM('reward') * (st.buffs.reward > 0 ? 1.5 : 1) * prestigeMult() * evtMult(), f = Math.floor(v);
     return Math.max(1, f + (Math.random() < v - f ? 1 : 0));
   }
   function tierNote() {
@@ -459,7 +459,8 @@ canvas {
     seeds.forEach(function (s, i) { s.x = (W / (n + 1)) * (i + 1); s.row = n >= 5 ? i % 2 : 0; s.born = fx ? -i * 0.12 : 1; });
     if (fx) { tierFx = 1.8; petalT = 1.8; tierStartSound(); }
     st.stats.maxTier = Math.max(st.stats.maxTier, st.garden);
-    bannerFx = true; bannerT = 3.2; bannerTitle = 'Kademe ' + st.garden; bannerSub = tierNote();
+    bannerFx = true; bannerT = 3.2; bannerTitle = 'Kademe ' + st.garden; bannerSub = tierNote() + (msNext(st.garden) ? ' · Kademe ' + msNext(st.garden) + '\'de kazanç ×2' : '');
+    if (fx && MSTONES.indexOf(st.garden) >= 0) { bannerSub = 'Kilometre taşı! Bütün kazançlar ×2 oldu'; setTimeout(function () { say('Kademe ' + st.garden + ' kilometre taşı: bütün kazançlar ×2 (toplam ×' + msF(st.garden) + ')'); }, 50); }
   }
 
   /* ---------- görevler ve rozetler ---------- */
@@ -565,7 +566,7 @@ canvas {
 
   function updateUI() {
     checkBadges();
-    $('tierChip').textContent = 'Kademe ' + st.garden + (isBoss() ? ' · Büyük' : '');
+    $('tierChip').textContent = 'Kademe ' + st.garden + (isBoss() ? ' · Büyük' : '') + (msCount(st.garden) ? ' · ×' + msF(st.garden) : '');
     var gc = $('goldChip'); gc.textContent = 'Damla ' + fmt(st.gold); gc.classList.toggle('ready', affordable());
     $('shelfLabel').textContent = 'Koleksiyon' + (st.rainbows ? ' · gökkuşağı ' + st.rainbows : '');
     var slots = document.querySelectorAll('.slot');
@@ -1551,7 +1552,7 @@ canvas {
 
   var welcomeOpen = false, welcomeAmt = 0;
   function offlineCap() { return (2 + st.up.vault) * 3600; }
-  function offlineRate() { return 0.5 * CK * (1 + Math.floor((st.garden - 1) / 4)) * tg() * dreamF() * luckF() * prestigeMult() * D().reward; }
+  function offlineRate() { return 0.5 * CK * (1 + Math.floor((st.garden - 1) / 4)) * tg() * msF(st.garden) * dreamF() * luckF() * prestigeMult() * D().reward; }
   function checkOffline() {
     if (welcomeOpen || !st.lastSeen) return;
     var away = (Date.now() - st.lastSeen) / 1000; if (away < 300) return;
