@@ -73,6 +73,7 @@ canvas {
 .msg { text-align: center; min-height: 44px; font-weight: 700; color: var(--ink); display: grid; place-items: center; }
 
 .tabs { position: fixed; z-index: 40; left: 50%; transform: translateX(-50%); bottom: calc(env(safe-area-inset-bottom, 0px) + 8px); width: min(460px, calc(100% - 32px)); display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; background: var(--card); border: 2px solid var(--line); border-radius: 16px; padding: 4px; box-shadow: 0 6px 20px rgba(29,59,99,0.25); }
+.cprev { flex: none; width: 76px; height: 60px; border-radius: 12px; background: var(--soft); }
 .backdrop { position: fixed; inset: 0; z-index: 38; background: rgba(29,59,99,0.3); }
 .tabs button { min-height: 44px; border: 0; border-radius: 12px; background: transparent; color: var(--muted); font: 700 12px var(--font-body); cursor: pointer; padding: 4px 0; }
 .tabs button[aria-selected="true"] { background: var(--pink); color: #fff; }
@@ -150,9 +151,9 @@ canvas {
   <div class="backdrop" id="backdrop" hidden></div>
   <div class="tabs" role="tablist" id="tabs">
     <button role="tab" data-tab="ups" aria-selected="false" id="tabUps">Yükselt</button>
+    <button role="tab" data-tab="shop" aria-selected="false" id="tabShop">Mağaza</button>
     <button role="tab" data-tab="quests" aria-selected="false" id="tabQuests">Görevler</button>
     <button role="tab" data-tab="worlds" aria-selected="false" id="tabWorlds">Evrenler</button>
-    <button role="tab" data-tab="badges" aria-selected="false">Rozetler</button>
     <button role="tab" data-tab="set" aria-selected="false">Ayarlar</button>
   </div>
 
@@ -166,6 +167,10 @@ canvas {
     <h2>Görevler</h2>
     <p class="sub">Günlük hediyeni al, görevleri bitir. Biten görevin yerine yenisi gelir.</p>
     <div id="questList"></div>
+    <h2 style="margin-top:6px">Bahçıvan kartı</h2>
+    <div class="stats" id="stats"></div>
+    <h2 style="margin-top:6px">Rozetler</h2>
+    <div id="badgeList"></div>
   </section>
 
   <section class="panel" id="panel-worlds" role="tabpanel" hidden>
@@ -174,11 +179,14 @@ canvas {
     <div id="worldList"></div>
   </section>
 
-  <section class="panel" id="panel-badges" role="tabpanel" hidden>
-    <h2>Bahçıvan kartı</h2>
-    <div class="stats" id="stats"></div>
-    <h2 style="margin-top:6px">Rozetler</h2>
-    <div id="badgeList"></div>
+  <section class="panel" id="panel-shop" role="tabpanel" hidden>
+    <h2>Mağaza</h2>
+    <p class="sub">Damlalarınla bulutlarına kostüm al, güçlendirici kullan.</p>
+    <div class="setrow"><b>Kostüm giydirilecek bulut</b><div class="seg" data-set="shopcloud"><button data-v="p">Pembe</button><button data-v="b">Mavi</button><button data-v="y">Sarı</button></div></div>
+    <h2 style="font-size:17px;margin-top:4px">Kostümler</h2>
+    <div id="costumeList"></div>
+    <h2 style="font-size:17px;margin-top:8px">Güçlendiriciler</h2>
+    <div id="boostList"></div>
   </section>
 
   <section class="panel" id="panel-set" role="tabpanel" hidden>
@@ -216,8 +224,8 @@ canvas {
   var UPKEYS = ['power', 'tank', 'refill', 'wide', 'idle', 'luck', 'cool'];
   function defaults() {
     return { ver: 2, garden: 1, rainbows: 0, found: {}, gold: 0, up: {}, quests: [], badges: {},
-      daily: { last: '', streak: 0 }, world: 'sky', worlds: { sky: true }, wlv: {},
-      stats: { blooms: 0, tiers: 0, refills: 0, sec: 0, maxTier: 1, earned: 0 },
+      daily: { last: '', streak: 0 }, world: 'sky', worlds: { sky: true }, wlv: {}, cos: { owned: {}, worn: {} }, buffs: { reward: 0, drain: 0 },
+      stats: { blooms: 0, tiers: 0, refills: 0, sec: 0, maxTier: 1, earned: 0, starsCaught: 0 },
       set: { diff: 'normal', vol: 80, theme: 'day', face: 'smile', motion: null, owned: { day: true } } };
   }
   var st = defaults();
@@ -231,7 +239,7 @@ canvas {
     st.up = st.up || {}; UPKEYS.forEach(function (k) { st.up[k] = st.up[k] || 0; });
     st.quests = st.quests || []; st.badges = st.badges || {};
     st.daily = st.daily || d.daily;
-    st.wlv = st.wlv || {}; st.worlds = st.worlds || {}; st.worlds.sky = true; if (!st.world || !st.worlds[st.world]) st.world = 'sky';
+    st.wlv = st.wlv || {}; st.cos = st.cos || { owned: {}, worn: {} }; st.cos.owned = st.cos.owned || {}; st.cos.worn = st.cos.worn || {}; st.buffs = st.buffs || { reward: 0, drain: 0 }; st.buffs.reward = st.buffs.reward || 0; st.buffs.drain = st.buffs.drain || 0; st.worlds = st.worlds || {}; st.worlds.sky = true; if (!st.world || !st.worlds[st.world]) st.world = 'sky';
     st.stats = st.stats || d.stats; Object.keys(d.stats).forEach(function (k) { st.stats[k] = st.stats[k] || 0; });
     st.stats.maxTier = Math.max(st.stats.maxTier, st.garden || 1);
     st.set = st.set || d.set; Object.keys(d.set).forEach(function (k) { if (st.set[k] === undefined) st.set[k] = d.set[k]; });
@@ -288,13 +296,14 @@ canvas {
     { id: 'heat', name: 'Sıcak hava dalgası', sub: 'Bulutların suyu iki kat hızlı buharlaşıyor.', min: 2, dur: 20, drain: 2, good: false },
     { id: 'dry', name: 'Kuraklık', sub: 'Sulanmayan çiçekler üç kat hızlı solar.', min: 2, dur: 20, decay: 3, good: false },
     { id: 'gust', name: 'Sert rüzgar', sub: 'Yağmur çok savruluyor.', min: 3, dur: 18, wind: 2.2, good: false },
-    { id: 'bless', name: 'Bereket yağmuru', sub: 'Çiçek ödülleri iki kat!', min: 2, dur: 20, reward: 2, good: true }
+    { id: 'bless', name: 'Bereket yağmuru', sub: 'Çiçek ödülleri iki kat!', min: 2, dur: 20, reward: 2, good: true },
+    { id: 'stars', name: 'Yıldız yağmuru', sub: 'Düşen yıldızlara dokun ya da bulutla yakala!', min: 2, dur: 16, stars: true, good: true }
   ];
   var ev = null, evNext = 50, calmT = 0, combo = 0, comboT = 0;
   function evMod(k) { return ev && ev.def[k] !== undefined ? ev.def[k] : 1; }
 
   function fillPer() { return 0.034 * (1 + 0.15 * st.up.power) * D().fill * WM('fill') / tierF(); }
-  function drainRate() { return 0.13 * Math.min(2.5, 1 + 0.06 * (st.garden - 1)) * D().drain * Math.pow(0.88, st.up.tank) * evMod('drain') * WM('drain') * (calmT > 0 ? 0.5 : 1); }
+  function drainRate() { return 0.13 * Math.min(2.5, 1 + 0.06 * (st.garden - 1)) * D().drain * Math.pow(0.88, st.up.tank) * evMod('drain') * WM('drain') * (calmT > 0 ? 0.5 : 1) * (st.buffs.drain > 0 ? 0.5 : 1); }
   function decayRate() { return 0.012 * (1 + 0.05 * (st.garden - 1)) * D().decay * evMod('decay') * WM('decay'); }
   function refillRate() { return 0.5 * (1 + 0.25 * st.up.refill); }
   function hitR() { return 30 + 4 * st.up.wide; }
@@ -302,7 +311,7 @@ canvas {
   function windStr() { return st.garden >= 3 ? Math.min(70, 12 * (st.garden - 2)) * D().wind * WM('wind') : 0; }
   function windNow() { return calmT > 0 ? 0 : windStr() * evMod('wind') * Math.sin(tAll * 0.5); }
   function money(n) {
-    var v = n * D().reward * luckF() * evMod('reward') * WM('reward'), f = Math.floor(v);
+    var v = n * D().reward * luckF() * evMod('reward') * WM('reward') * (st.buffs.reward > 0 ? 1.5 : 1), f = Math.floor(v);
     return Math.max(1, f + (Math.random() < v - f ? 1 : 0));
   }
   function tierNote() {
@@ -372,7 +381,7 @@ canvas {
   /* ---------- oyun durumu ---------- */
   function mkCloud(x, y, col, vx) { return { x: x, y: y, col: col, water: 1, vx: vx, holder: null, tx: 0, ty: 0, acc: 0, wasLow: false, dryMark: false }; }
   var clouds = [mkCloud(80, 120, 'p', 10), mkCloud(190, 190, 'b', -9), mkCloud(280, 130, 'y', 8)];
-  var seeds = [], drops = [], parts = [], flies = [];
+  var seeds = [], drops = [], parts = [], flies = [], stars = [], floats = [], starT = 20, uiDirty = false, uiT = 0, shopCloud = 'p';
   var bannerFx = true, tierFx = 0, petalT = 0, gardenTimer = 0, rainbowT = 0, tAll = 0, bannerT = 0, bannerTitle = '', bannerSub = '', sunFlash = 0, abilTick = 0;
   var STARS = []; for (var si = 0; si < 30; si++) STARS.push({ x: rnd(8, 352), y: rnd(8, 300), r: rnd(0.8, 1.8), ph: rnd(0, 6) });
 
@@ -429,6 +438,8 @@ canvas {
     { id: 'earn', name: 'Birikimci', desc: 'Toplam 500 damla kazan.', r: 20, test: function () { return st.stats.earned >= 500; } },
     { id: 'trav', name: 'Gezgin', desc: 'İlk yeni evreni aç.', r: 15, test: function () { return ownedWorlds() >= 1; } },
     { id: 'cosmo', name: 'Evren kaşifi', desc: 'Bütün evrenleri aç.', r: 60, test: function () { return ownedWorlds() >= WORLDS.length - 1; } },
+    { id: 'style', name: 'Stil sahibi', desc: '5 kostüm satın al.', r: 15, test: function () { return Object.keys(st.cos.owned).length >= 5; } },
+    { id: 'star20', name: 'Yıldız avcısı', desc: '20 yıldız yakala.', r: 15, test: function () { return st.stats.starsCaught >= 20; } },
     { id: 'combo', name: 'Zincir ustası', desc: 'Kombo ×5 yap.', r: 12, test: function () { return st.stats.bestCombo >= 5; } }
   ];
   function checkBadges() {
@@ -548,7 +559,7 @@ canvas {
     }
     notifiedW = curW;
 
-    $('stats').innerHTML = '<div class="stat"><b>' + st.stats.blooms + '</b><span>Açan çiçek</span></div><div class="stat"><b>' + st.stats.maxTier + '</b><span>En yüksek kademe</span></div><div class="stat"><b>' + st.rainbows + '</b><span>Gökkuşağı</span></div><div class="stat"><b>' + st.stats.earned + '</b><span>Toplam damla</span></div><div class="stat"><b>' + (st.stats.bestCombo || 0) + '</b><span>En iyi kombo</span></div><div class="stat"><b>' + fmtTime(st.stats.sec) + '</b><span>Oynama süresi</span></div>';
+    $('stats').innerHTML = '<div class="stat"><b>' + st.stats.blooms + '</b><span>Açan çiçek</span></div><div class="stat"><b>' + st.stats.maxTier + '</b><span>En yüksek kademe</span></div><div class="stat"><b>' + st.rainbows + '</b><span>Gökkuşağı</span></div><div class="stat"><b>' + st.stats.earned + '</b><span>Toplam damla</span></div><div class="stat"><b>' + (st.stats.bestCombo || 0) + '</b><span>En iyi kombo</span></div><div class="stat"><b>' + st.stats.starsCaught + '</b><span>Yakalanan yıldız</span></div><div class="stat"><b>' + fmtTime(st.stats.sec) + '</b><span>Oynama süresi</span></div>';
     var bl = $('badgeList'); bl.innerHTML = '';
     BADGES.forEach(function (b) {
       var on = !!st.badges[b.id], row = document.createElement('div'); row.className = 'row badge-row' + (on ? '' : ' off');
@@ -558,8 +569,9 @@ canvas {
 
     document.querySelectorAll('.seg').forEach(function (seg) {
       var key = seg.getAttribute('data-set');
-      seg.querySelectorAll('button').forEach(function (b) { b.setAttribute('aria-pressed', String(st.set[key] === b.getAttribute('data-v'))); });
+      seg.querySelectorAll('button').forEach(function (b) { b.setAttribute('aria-pressed', String((key === 'shopcloud' ? shopCloud : st.set[key]) === b.getAttribute('data-v'))); });
     });
+    if (curTab === 'shop') buildShop();
     $('diffNote').textContent = D().note;
     $('thDusk').textContent = THEME_NAME.dusk + (st.set.owned.dusk ? '' : ' · ' + THEME_COST.dusk);
     $('thNight').textContent = THEME_NAME.night + (st.set.owned.night ? '' : ' · ' + THEME_COST.night);
@@ -567,13 +579,14 @@ canvas {
   }
 
   /* ---------- tıklamalar ---------- */
-  var tabNames = ['ups', 'quests', 'worlds', 'badges', 'set'];
+  var tabNames = ['ups', 'shop', 'worlds', 'quests', 'set'];
   var curTab = null;
   function setTab(t) {
     curTab = t;
     tabNames.forEach(function (n) { $('panel-' + n).hidden = n !== t; });
     $('tabs').querySelectorAll('button').forEach(function (x) { x.setAttribute('aria-selected', String(x.getAttribute('data-tab') === t)); });
     $('backdrop').hidden = !t;
+    if (t === 'shop') buildShop();
     if (t) $('panel-' + t).scrollTop = 0;
   }
   function openTab(t) { setTab(t); }
@@ -634,6 +647,7 @@ canvas {
     seg.addEventListener('click', function (e) {
       var b = e.target.closest('button'); if (!b) return;
       var key = seg.getAttribute('data-set'), v = b.getAttribute('data-v');
+      if (key === 'shopcloud') { shopCloud = v; updateUI(); return; }
       if (key === 'theme' && !st.set.owned[v]) {
         if (st.gold < THEME_COST[v]) { say('Bu gökyüzü için ' + THEME_COST[v] + ' damla lazım.'); return; }
         st.gold -= THEME_COST[v]; st.set.owned[v] = true; buySound(); say(THEME_NAME[v] + ' gökyüzü açıldı!');
@@ -653,7 +667,7 @@ canvas {
     drops.length = 0; parts.length = 0; flies.length = 0;
     ev = null; evNext = 50; calmT = 0; combo = 0; comboT = 0;
     cdLeft.sun = 0; cdLeft.herd = 0; cdLeft.calm = 0;
-    gardenTimer = 0; rainbowT = 0; tierFx = 0; petalT = 0;
+    gardenTimer = 0; rainbowT = 0; tierFx = 0; petalT = 0; stars.length = 0; floats.length = 0; starT = rnd(15, 28); shopCloud = 'p';
     notified = null; notifiedW = null; hideToast(); setTab(null);
     newGarden(); updateUI(); updateAbil(); save();
     say('Her şey sıfırlandı. Yeni bir bahçe başlıyor!');
@@ -708,6 +722,7 @@ canvas {
   cv.addEventListener('pointerdown', function (e) {
     e.preventDefault(); ac();
     var p = pos(e), best = null, bd = 60;
+    if (tapStar(p)) return;
     clouds.forEach(function (c) { if (c.holder !== null) return; var d = Math.hypot(c.x - p.x, c.y - p.y); if (d < bd) { bd = d; best = c; } });
     if (best) { best.holder = e.pointerId; best.dx = best.x - p.x; best.dy = best.y - p.y; best.tx = best.x; best.ty = best.y; try { cv.setPointerCapture(e.pointerId); } catch (er) {} }
   });
@@ -729,6 +744,7 @@ canvas {
     var cm = 1 + 0.2 * Math.min(combo - 1, 5);
     var reward = money((1 + Math.floor((st.garden - 1) / 4)) * (isBoss() ? 3 : 1) * cm);
     earn(reward);
+    floats.push({ x: s.x, y: s.y - 70, text: '+' + reward, col: '#d6336c', life: 0 });
     burst(s.x, s.y - 30, HEX[s.key], 22);
     bloomSound();
     if (flies.length < 8) flies.push({ x: s.x, y: s.y - 40, ph: Math.random() * 6, col: HEX[s.key], cx: s.x });
@@ -768,6 +784,20 @@ canvas {
       while (Math.random() < np * dt * 40 && np > 0) { np -= 1 / (dt * 40); parts.push({ x: rnd(0, W), y: -10, vx: rnd(-25, 25), vy: rnd(50, 100), life: 0, max: rnd(2, 3.2), col: HEX[KEYS[Math.floor(Math.random() * 6)]], r: rnd(3, 5.5), kind: 'petal', rot: Math.random() * 6 }); }
     }
     if (calmT > 0) calmT -= dt;
+    if (st.buffs.reward > 0) st.buffs.reward = Math.max(0, st.buffs.reward - dt);
+    if (st.buffs.drain > 0) st.buffs.drain = Math.max(0, st.buffs.drain - dt);
+    starT -= dt; if (starT <= 0) { spawnStar(true); starT = rnd(30, 55); }
+    if (ev && ev.def.stars) { ev.starAcc = (ev.starAcc || 0) + dt; if (ev.starAcc > 0.45) { ev.starAcc = 0; spawnStar(false); } }
+    for (var si = stars.length - 1; si >= 0; si--) {
+      var sr = stars[si]; sr.x += sr.vx * dt; sr.y += sr.vy * dt; sr.life += dt;
+      if (sr.x < -40 || sr.x > W + 40 || sr.y > GROUND - 10 || sr.life > 16) { stars.splice(si, 1); continue; }
+      if (!curTab) {
+        for (var ci = 0; ci < clouds.length; ci++) { if (Math.hypot(clouds[ci].x - sr.x, clouds[ci].y - sr.y) < 44 + sr.r) { collectStar(si); break; } }
+      }
+    }
+    for (var fi = floats.length - 1; fi >= 0; fi--) { floats[fi].life += dt; floats[fi].y -= 34 * dt; if (floats[fi].life > 1.1) floats.splice(fi, 1); }
+    uiT += dt; if (uiDirty && uiT > 0.4) { uiDirty = false; uiT = 0; updateUI(); }
+    if (curTab === 'shop' && ((uiT * 10) | 0) % 5 === 0) refreshBoostText();
     if (comboT > 0) { comboT -= dt; if (comboT <= 0) combo = 0; }
     ABIL.forEach(function (a) { if (cdLeft[a.id] > 0) cdLeft[a.id] = Math.max(0, cdLeft[a.id] - dt); });
     abilTick += dt; if (abilTick > 0.25) { abilTick = 0; updateAbil(); }
@@ -1096,6 +1126,7 @@ canvas {
     ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.beginPath(); ctx.ellipse(-4, -16, 14, 6, -0.3, 0, Math.PI * 2); ctx.fill();
     cloudDeco(c);
     drawFace(c, held, wet);
+    if (st.cos.worn[c.col]) costumeDraw(st.cos.worn[c.col], c.col);
     if (wet < 0.995 || held) {
       ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.fillRect(-22, 30, 44, 6);
       ctx.fillStyle = HEX[c.col]; ctx.fillRect(-22, 30, 44 * wet, 6);
@@ -1182,6 +1213,188 @@ canvas {
     ctx.fillStyle = '#2b3a55'; ctx.fillRect(f.x - 1, f.y - 4, 2, 8);
   }
 
+
+  /* ---------- mağaza: kostümler ve güçlendiriciler ---------- */
+  var COSTUMES = [
+    { id: 'bow', name: 'Kurdele', cost: 60, desc: 'Tatlı bir fiyonk.' },
+    { id: 'party', name: 'Parti şapkası', cost: 70, desc: 'Her gün doğum günü.' },
+    { id: 'flowers', name: 'Çiçek tacı', cost: 75, desc: 'Bahar her yerde.' },
+    { id: 'tophat', name: 'Silindir şapka', cost: 80, desc: 'Çok kibar görünüyor.' },
+    { id: 'glasses', name: 'Yuvarlak gözlük', cost: 90, desc: 'Bilgin bir bulut.' },
+    { id: 'beanie', name: 'Kırmızı bere', cost: 100, desc: 'Kış için sıcacık.' },
+    { id: 'headphones', name: 'Kulaklık', cost: 110, desc: 'Yağmur şarkısı dinliyor.' },
+    { id: 'cat', name: 'Kedi kulakları', cost: 120, desc: 'Miyav yağmuru!' },
+    { id: 'wizard', name: 'Büyücü şapkası', cost: 130, desc: 'Yıldızlı ve gizemli.' },
+    { id: 'helmet', name: 'Astronot kaskı', cost: 200, desc: 'Uzaya hazır.' },
+    { id: 'crown', name: 'Kral tacı', cost: 220, desc: 'Bulutların kralı.' }
+  ];
+  var BOOSTS = [
+    { id: 'reward', name: 'Bereket tılsımı', cost: 60, desc: '90 saniye boyunca damla ödülleri ×1,5.' },
+    { id: 'drain', name: 'Su iksiri', cost: 50, desc: '90 saniye boyunca bulutlar yarı hızda su harcar.' },
+    { id: 'dust', name: 'Çiçek tozu', cost: 40, desc: 'Bütün tohumlara anında %50 su verir.' }
+  ];
+  function cloudShape(color) {
+    ctx.fillStyle = color;
+    ctx.beginPath(); ctx.arc(-26, 4, 18, 0, Math.PI * 2); ctx.arc(-8, -8, 24, 0, Math.PI * 2); ctx.moveTo(36, -4); ctx.arc(14, -4, 22, 0, Math.PI * 2); ctx.moveTo(46, 6); ctx.arc(30, 6, 16, 0, Math.PI * 2); ctx.fill();
+    ctx.fillRect(-30, 6, 62, 16);
+    ctx.beginPath(); ctx.arc(-30, 14, 8, 0, Math.PI * 2); ctx.arc(32, 14, 8, 0, Math.PI * 2); ctx.fill();
+  }
+  function costumeDraw(id, col) {
+    var c0 = HEX[col] || '#ffffff', dark = '#2b3a55', i;
+    ctx.save(); ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    if (id === 'tophat') {
+      ctx.fillStyle = '#2b2b3a'; ctx.fillRect(-20, -56, 28, 26);
+      ctx.fillStyle = '#ff6f91'; ctx.fillRect(-20, -39, 28, 6);
+      ctx.fillStyle = '#2b2b3a'; ctx.beginPath(); ctx.ellipse(-6, -30, 26, 5.5, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fillRect(-17, -54, 4, 14);
+    } else if (id === 'crown') {
+      ctx.fillStyle = '#ffd23f'; ctx.beginPath(); ctx.moveTo(-22, -29); ctx.lineTo(-23, -48); ctx.lineTo(-14, -39); ctx.lineTo(-6, -52); ctx.lineTo(2, -39); ctx.lineTo(10, -48); ctx.lineTo(9, -29); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = '#d99a00'; ctx.lineWidth = 2; ctx.stroke();
+      ctx.fillStyle = '#ff4f7a'; circle(-6, -36, 3); ctx.fillStyle = '#4aa8ff'; circle(-16, -34, 2.2); circle(4, -34, 2.2);
+    } else if (id === 'bow') {
+      ctx.fillStyle = '#ff4f7a';
+      ctx.beginPath(); ctx.moveTo(-28, -18); ctx.lineTo(-42, -29); ctx.lineTo(-42, -8); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(-28, -18); ctx.lineTo(-14, -29); ctx.lineTo(-14, -8); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#d62e5a'; circle(-28, -18, 4.5);
+    } else if (id === 'party') {
+      ctx.fillStyle = '#ff8fb1'; ctx.beginPath(); ctx.moveTo(-19, -30); ctx.lineTo(3, -30); ctx.lineTo(-8, -64); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = '#fff'; ctx.lineWidth = 2.4; ctx.beginPath(); ctx.moveTo(-16, -37); ctx.lineTo(0, -45); ctx.moveTo(-12, -48); ctx.lineTo(-4, -52); ctx.moveTo(-18, -31); ctx.lineTo(2, -41); ctx.stroke();
+      ctx.fillStyle = '#ffd23f'; circle(-8, -64, 4.5);
+    } else if (id === 'glasses') {
+      ctx.strokeStyle = dark; ctx.lineWidth = 2.4;
+      ctx.fillStyle = 'rgba(160,210,255,0.28)';
+      ctx.beginPath(); ctx.arc(-10, 0, 7, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.arc(10, 0, 7, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(-3, -1); ctx.lineTo(3, -1); ctx.moveTo(-17, -1); ctx.lineTo(-25, -3); ctx.moveTo(17, -1); ctx.lineTo(25, -3); ctx.stroke();
+    } else if (id === 'helmet') {
+      ctx.fillStyle = 'rgba(190,225,255,0.2)'; ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.lineWidth = 3.2;
+      ctx.beginPath(); ctx.ellipse(0, -2, 56, 42, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(0, -2, 46, 3.5, 4.4); ctx.stroke();
+      ctx.fillStyle = '#c9d3de'; ctx.fillRect(-16, 38, 32, 5);
+    } else if (id === 'headphones') {
+      ctx.strokeStyle = dark; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(2, -4, 37, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke();
+      ctx.fillStyle = '#ff6f91'; ctx.fillRect(-42, -9, 11, 20); ctx.fillRect(33, -9, 11, 20);
+      ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(-40, -7, 3, 10); ctx.fillRect(35, -7, 3, 10);
+    } else if (id === 'wizard') {
+      ctx.fillStyle = '#6c4fd0'; ctx.beginPath(); ctx.moveTo(-22, -30); ctx.lineTo(8, -30); ctx.lineTo(-10, -70); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#5a3fb8'; ctx.beginPath(); ctx.ellipse(-7, -30, 28, 5.5, 0, 0, Math.PI * 2); ctx.fill();
+      star(-11, -50, 4.5, '#ffd23f'); star(-3, -39, 3, '#fff6c2');
+    } else if (id === 'cat') {
+      var ear = mix(c0, '#000000', 0.12);
+      ctx.fillStyle = ear;
+      ctx.beginPath(); ctx.moveTo(-31, -16); ctx.lineTo(-27, -46); ctx.lineTo(-10, -30); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(6, -28); ctx.lineTo(24, -48); ctx.lineTo(32, -14); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#ffb4c8';
+      ctx.beginPath(); ctx.moveTo(-28, -22); ctx.lineTo(-26, -39); ctx.lineTo(-16, -29); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(12, -29); ctx.lineTo(23, -41); ctx.lineTo(27, -21); ctx.closePath(); ctx.fill();
+    } else if (id === 'beanie') {
+      ctx.fillStyle = '#e8445a'; ctx.beginPath(); ctx.arc(-8, -26, 21, Math.PI, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(-31, -29, 46, 9);
+      ctx.fillStyle = '#fff'; circle(-8, -49, 6.5);
+    } else if (id === 'flowers') {
+      var fc = ['#ff8fb1', '#ffffff', '#ffd23f', '#b185ff', '#ff9a4d'], pts = [[-26, -14], [-15, -29], [-3, -34], [10, -29], [22, -19]];
+      pts.forEach(function (pt, k) {
+        ctx.fillStyle = fc[k % 5];
+        for (var j = 0; j < 5; j++) { var an = j / 5 * Math.PI * 2; circle(pt[0] + Math.cos(an) * 4.2, pt[1] + Math.sin(an) * 4.2, 3.2); }
+        ctx.fillStyle = '#ffe27a'; circle(pt[0], pt[1], 2.6);
+      });
+    }
+    ctx.restore();
+  }
+  function costumePreview(cv2, id) {
+    var main = ctx, c2 = cv2.getContext('2d');
+    ctx = c2; c2.clearRect(0, 0, cv2.width, cv2.height);
+    c2.save(); c2.scale(2, 2); c2.translate(38, 40); c2.scale(0.5, 0.5);
+    cloudShape(HEX[shopCloud]); drawFace({ y: 0 }, false, 1); costumeDraw(id, shopCloud);
+    c2.restore(); ctx = main;
+  }
+  function buildShop() {
+    var cl = $('costumeList'), bl = $('boostList'); if (!cl || !bl) return;
+    cl.innerHTML = ''; bl.innerHTML = '';
+    COSTUMES.forEach(function (k) {
+      var own = !!st.cos.owned[k.id], worn = st.cos.worn[shopCloud] === k.id;
+      var row = document.createElement('div'); row.className = 'row';
+      row.innerHTML = '<canvas class="cprev" width="152" height="120"></canvas><div class="row-t"><b>' + k.name + '</b><span>' + k.desc + '</span></div><button class="buy" data-cos="' + k.id + '"' + (!own && st.gold < k.cost ? ' disabled' : '') + '>' + (!own ? 'Al · ' + k.cost : worn ? 'Çıkar' : 'Giy') + '</button>';
+      cl.appendChild(row); costumePreview(row.querySelector('canvas'), k.id);
+    });
+    BOOSTS.forEach(function (k) {
+      var row = document.createElement('div'); row.className = 'row';
+      row.innerHTML = '<div class="row-t"><b>' + k.name + '</b><span>' + k.desc + '</span><span id="boostS-' + k.id + '"></span></div><button class="buy" data-boost="' + k.id + '"' + (st.gold < k.cost ? ' disabled' : '') + '>Al · ' + k.cost + '</button>';
+      bl.appendChild(row);
+    });
+    refreshBoostText();
+  }
+  function refreshBoostText() {
+    ['reward', 'drain'].forEach(function (id) {
+      var el = $('boostS-' + id); if (!el) return;
+      var t = Math.ceil(st.buffs[id]); el.textContent = t > 0 ? 'Aktif: ' + t + ' sn kaldı' : '';
+    });
+  }
+  $('costumeList').addEventListener('click', function (e) {
+    var b = e.target.closest('button[data-cos]'); if (!b || b.disabled) return;
+    var id = b.getAttribute('data-cos'), k = COSTUMES.filter(function (x) { return x.id === id; })[0]; if (!k) return;
+    if (!st.cos.owned[id]) {
+      if (st.gold < k.cost) return;
+      st.gold -= k.cost; st.cos.owned[id] = true; st.cos.worn[shopCloud] = id; buySound(); say(k.name + ' alındı ve giydirildi!');
+    } else st.cos.worn[shopCloud] = st.cos.worn[shopCloud] === id ? '' : id;
+    updateUI(); save();
+  });
+  $('boostList').addEventListener('click', function (e) {
+    var b = e.target.closest('button[data-boost]'); if (!b || b.disabled) return;
+    var id = b.getAttribute('data-boost'), k = BOOSTS.filter(function (x) { return x.id === id; })[0]; if (!k || st.gold < k.cost) return;
+    if (id === 'dust') {
+      var pend = seeds.filter(function (s) { return !s.done; });
+      if (!pend.length) { say('Su verilecek tohum kalmadı.'); return; }
+      st.gold -= k.cost; buySound();
+      pend.forEach(function (s) { s.idle = 0; s.need.forEach(function (c) { s.fill[c] = Math.min(1, s.fill[c] + 0.5); }); burst(s.x, s.y - 20, '#ffe27a', 8); if (s.need.every(function (c) { return s.fill[c] >= 1; })) bloom(s); });
+      say('Çiçek tozu serpildi!');
+    } else { st.gold -= k.cost; st.buffs[id] = Math.min(300, st.buffs[id] + 90); buySound(); say(k.name + ' etkinleşti: 90 saniye!'); }
+    updateUI(); save();
+  });
+
+  /* ---------- yıldızlar ---------- */
+  function spawnStar(gold) {
+    if (stars.length > 14) return;
+    if (gold) {
+      var dir = Math.random() < 0.5 ? 1 : -1;
+      stars.push({ x: dir > 0 ? -20 : W + 20, y: rnd(60, 210), vx: dir * rnd(55, 80), vy: rnd(-6, 8), r: 15, val: money(2 + Math.floor(st.garden / 3)), gold: true, life: 0, ph: Math.random() * 6 });
+      say('Altın yıldız geçiyor! Dokun ya da bir bulutla yakala.');
+    } else {
+      stars.push({ x: rnd(20, 340), y: -10, vx: rnd(-20, 20), vy: rnd(75, 115), r: 10, val: Math.random() < 0.25 ? 2 : 1, gold: false, life: 0, ph: Math.random() * 6 });
+    }
+  }
+  function collectStar(i) {
+    var sr = stars[i]; if (!sr) return;
+    stars.splice(i, 1); earn(sr.val); st.stats.starsCaught++; uiDirty = true;
+    floats.push({ x: sr.x, y: sr.y - 10, text: '+' + sr.val, col: '#b87800', life: 0 });
+    burst(sr.x, sr.y, '#ffd23f', sr.gold ? 16 : 8);
+    tone(1047, 0.15, 0, 'triangle', 0.1); tone(1568, 0.2, 0.08, 'triangle', 0.1);
+  }
+  function tapStar(p) {
+    for (var i = stars.length - 1; i >= 0; i--) { if (Math.hypot(stars[i].x - p.x, stars[i].y - p.y) < stars[i].r + 16) { collectStar(i); return true; } }
+    return false;
+  }
+  function drawStars() {
+    stars.forEach(function (sr) {
+      var fade = sr.gold && sr.life > 12 ? Math.max(0, 1 - (sr.life - 12) / 4) : 1;
+      ctx.save(); ctx.globalAlpha = fade;
+      if (sr.gold) { ctx.strokeStyle = 'rgba(255,226,122,0.55)'; ctx.lineWidth = 4; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(sr.x, sr.y); ctx.lineTo(sr.x - sr.vx * 0.35, sr.y - sr.vy * 0.35); ctx.stroke(); }
+      ctx.fillStyle = 'rgba(255,226,122,0.35)'; circle(sr.x, sr.y, sr.r * 1.7);
+      ctx.translate(sr.x, sr.y); if (!motionReduced()) ctx.rotate(tAll * 1.5 + sr.ph); ctx.translate(-sr.x, -sr.y);
+      star(sr.x, sr.y, sr.r * 1.15, '#ffd23f'); star(sr.x, sr.y, sr.r * 0.55, '#fff6c2');
+      ctx.restore();
+    });
+  }
+  function drawFloats() {
+    ctx.save(); ctx.font = '800 15px "Baloo 2", system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.lineWidth = 4; ctx.lineJoin = 'round';
+    floats.forEach(function (f) {
+      ctx.globalAlpha = Math.max(0, 1 - f.life / 1.1);
+      ctx.strokeStyle = 'rgba(255,255,255,0.95)'; ctx.strokeText(f.text, f.x, f.y);
+      ctx.fillStyle = f.col; ctx.fillText(f.text, f.x, f.y);
+    });
+    ctx.restore();
+  }
+
   function drawParts() {
     parts.forEach(function (q) {
       ctx.globalAlpha = Math.max(0, 1 - q.life / q.max);
@@ -1206,6 +1419,8 @@ canvas {
     var y = 18;
     if (ev) { pill(170, y, ev.def.name + ' · ' + Math.ceil(ev.left) + ' sn', ev.def.good ? '#3fae5b' : '#e0783a'); y += 28; }
     if (calmT > 0) { pill(170, y, 'Dinginlik · ' + Math.ceil(calmT) + ' sn', '#4a9fe0'); y += 28; }
+    if (st.buffs.reward > 0) { pill(170, y, 'Tılsım ×1,5 · ' + Math.ceil(st.buffs.reward) + ' sn', '#c98a00'); y += 28; }
+    if (st.buffs.drain > 0) { pill(170, y, 'Su iksiri · ' + Math.ceil(st.buffs.drain) + ' sn', '#2f9fd6'); y += 28; }
     if (combo >= 2) { pill(170, y, 'Kombo ×' + combo + ' · +' + (Math.min(combo - 1, 5) * 20) + '%', '#ff6f91'); }
   }
 
@@ -1266,7 +1481,7 @@ canvas {
     drops.forEach(dropShape);
     clouds.slice().sort(function (a, b) { return a.y - b.y; }).forEach(drawCloud);
     seeds.forEach(drawBubble);
-    drawParts(); drawHUD(); drawOverlay();
+    drawParts(); drawStars(); drawFloats(); drawHUD(); drawOverlay();
   }
 
   /* ---------- başlat ---------- */
