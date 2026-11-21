@@ -112,6 +112,10 @@ canvas {
 .badge-row.off { opacity: 0.5; }
 .badge-mark { flex: none; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: #dcecf8; color: #fff; font-weight: 800; }
 .badge-row:not(.off) .badge-mark { background: #5fd47f; }
+.bulk { flex: none; display: flex; border: 2px solid var(--line); border-radius: 12px; overflow: hidden; }
+.bulk button { flex: 1; background: transparent; border: 0; min-height: 40px; color: var(--ink); font: 800 13px var(--font-body); cursor: pointer; }
+.bulk button[aria-pressed="true"] { background: var(--pink); color: #fff; }
+.lvl { font: 700 12px var(--font-body); color: var(--muted); margin-top: 3px; }
 .seg { display: inline-flex; flex-wrap: wrap; border: 2px solid var(--line); border-radius: 12px; overflow: hidden; }
 .seg button { background: transparent; border: 0; padding: 8px 12px; min-height: 44px; color: var(--ink); font: 700 13px var(--font-body); cursor: pointer; }
 .seg button[aria-pressed="true"] { background: var(--pink); color: #fff; }
@@ -141,8 +145,6 @@ canvas {
 .calm .toast.in, .calm .row.ready .buy { animation: none; }
 </style>
 
-</head>
-<body>
 <div class="app">
   <div class="top">
     <h1>Bulut Çobanı</h1>
@@ -175,8 +177,9 @@ canvas {
 
   <section class="panel" id="panel-ups" role="tabpanel" hidden>
     <h2>Yükseltmeler</h2>
-    <p class="sub">Damla kazanmak kolay değil: çiçek aç, kombo yap, görev bitir. Yükseltmeler her seviyede pahalanır.</p>
+    <p class="sub">Çiçek aç, kombo yap, görev bitir. Gelir yükseltmelerinin sınırı yok; 10, 25, 50, 100. seviyede kazancın ikiye katlanır.</p>
     <div id="prestigeBox"></div>
+    <div class="bulk" id="bulk"><button data-bulk="1">×1</button><button data-bulk="10">×10</button><button data-bulk="100">×100</button><button data-bulk="max">Maks</button></div>
     <div id="ups"></div>
   </section>
 
@@ -243,9 +246,23 @@ canvas {
   var msgEl = document.getElementById('msg');
 
   /* ---------- kayıt ---------- */
-  var UPKEYS = ['power', 'tank', 'refill', 'wide', 'idle', 'luck', 'cool', 'bee', 'dream'];
+  var UPKEYS = ['power', 'tank', 'refill', 'wide', 'idle', 'luck', 'cool', 'bee', 'dream', 'vault'];
+  var CK = 100; /* damla ölçeği: eski sayıların yüz katı */
+  var SUF = ['', ' K', ' M', ' B', ' T', ' aa', ' ab', ' ac', ' ad', ' ae', ' af', ' ag', ' ah', ' ai', ' aj'];
+  function fmt(n) {
+    n = Math.floor(n + 1e-9); if (!isFinite(n)) return '∞'; if (n < 1000) return String(n);
+    var i = Math.min(SUF.length - 1, Math.floor(Math.log10(n) / 3)), v = n / Math.pow(1000, i);
+    if (v >= 999.95 && i < SUF.length - 1) { i++; v = n / Math.pow(1000, i); }
+    var t = v >= 100 ? v.toFixed(0) : v >= 10 ? v.toFixed(1) : v.toFixed(2);
+    return t.replace('.', ',') + SUF[i];
+  }
+  function fmtX(v) { return '×' + (v >= 100 ? v.toFixed(0) : v >= 10 ? v.toFixed(1) : v.toFixed(2)).replace('.', ','); }
+  var MSTONES = [10, 25, 50, 100, 200, 400];
+  function msCount(lv) { var c = 0; MSTONES.forEach(function (m) { if (lv >= m) c++; }); return c; }
+  function msF(lv) { return Math.pow(2, msCount(lv)); }
+  function msNext(lv) { for (var i = 0; i < MSTONES.length; i++) if (MSTONES[i] > lv) return MSTONES[i]; return 0; }
   function defaults() {
-    return { ver: 2, garden: 1, rainbows: 0, found: {}, gold: 0, up: {}, quests: [], badges: {},
+    return { ver: 3, garden: 1, rainbows: 0, found: {}, gold: 0, up: {}, quests: [], badges: {},
       daily: { last: '', streak: 0 }, world: 'sky', worlds: { sky: true }, wlv: {}, prestige: { count: 0, gp: 0 }, album: { n: {}, c: {} }, evt: { id: '', pts: 0, claimed: {} }, week: { id: '', goals: [] }, lastSeen: 0, cos: { owned: {}, worn: {} }, buffs: { reward: 0, drain: 0 },
       stats: { blooms: 0, tiers: 0, refills: 0, sec: 0, maxTier: 1, earned: 0, starsCaught: 0 },
       set: { diff: 'normal', vol: 80, theme: 'day', face: 'smile', motion: null, owned: { day: true } } };
@@ -271,6 +288,7 @@ canvas {
     st.set = st.set || d.set; Object.keys(d.set).forEach(function (k) { if (st.set[k] === undefined) st.set[k] = d.set[k]; });
     st.set.owned = st.set.owned || { day: true }; st.set.owned.day = true;
     if (!st.ver || st.ver < 2) { st.quests = []; st.ver = 2; }
+    if (st.ver < 3) { st.gold = Math.round(st.gold * CK); st.stats.earned = Math.round(st.stats.earned * CK); st.ver = 3; }
     if (st.wlv.sky === undefined) st.wlv.sky = Math.max(0, st.stats.maxTier - 1);
   }
   fix();
@@ -289,7 +307,7 @@ canvas {
   function worldById(id) { for (var i = 0; i < WORLDS.length; i++) if (WORLDS[i].id === id) return WORLDS[i]; return WORLDS[0]; }
   function WM(k) { var m = worldById(st.world).mods; return m[k] !== undefined ? m[k] : 1; }
   function liquidTo() { return worldById(st.world).to; }
-  function wcost(w) { return st.set.test ? 0 : w.cost; }
+  function wcost(w) { return st.set.test ? 0 : w.cost * CK; }
   function wlvl(id) { return st.wlv[id] || 0; }
   function wprev(w) { var i = WORLDS.indexOf(w); return i > 0 ? WORLDS[i - 1] : null; }
   function unlocked(w) { var pv = wprev(w); return !pv || st.set.test || wlvl(pv.id) >= (w.need || 0); }
@@ -302,20 +320,29 @@ canvas {
     hard: { fill: 0.8, drain: 1.3, wind: 1.3, reward: 1.4, decay: 1.6, note: 'Çiçekler az sulanır ve çabuk solar, bulut çabuk susar. Ödüller ×1,4.' }
   };
   function D() { return DIFF[st.set.diff] || DIFF.normal; }
-  var MAXLV = 6;
   var UPS = [
-    { id: 'power', name: 'Yağmur gücü', desc: 'Her damla çiçeği daha çok sular.', base: 24 },
-    { id: 'tank', name: 'Büyük bulut', desc: 'Bulutun suyu daha geç biter.', base: 24 },
-    { id: 'refill', name: 'Hızlı dolum', desc: 'Denizde bulut çabuk dolar.', base: 18 },
-    { id: 'wide', name: 'Geniş yağmur', desc: 'Yağmur daha geniş alana düşer.', base: 30 },
-    { id: 'idle', name: 'Bulut uykusu', desc: 'Gökte boşta duran bulutlar yavaşça dolar.', base: 36 },
-    { id: 'luck', name: 'Altın dokunuş', desc: 'Çiçekler ve görevler daha çok damla verir.', base: 45 },
-    { id: 'cool', name: 'Hızlı yetenek', desc: 'Yetenekler daha çabuk hazır olur.', base: 36 },
-    { id: 'bee', name: 'Çalışkan arı', desc: 'Bir arı susayan çiçekleri senin yerine sular.', base: 60 },
-    { id: 'dream', name: 'Rüya bulutu', desc: 'Sen yokken daha çok damla biriktirir, daha uzun süre çalışır.', base: 50 }
+    { id: 'power', name: 'Yağmur gücü', desc: 'Her damla çiçeği daha çok sular.', base: 24, g: 1.6, max: 10 },
+    { id: 'tank', name: 'Büyük bulut', desc: 'Bulutun suyu daha geç biter.', base: 24, g: 1.6, max: 10 },
+    { id: 'refill', name: 'Hızlı dolum', desc: 'Denizde bulut çabuk dolar.', base: 18, g: 1.6, max: 10 },
+    { id: 'wide', name: 'Geniş yağmur', desc: 'Yağmur daha geniş alana düşer.', base: 30, g: 1.6, max: 10 },
+    { id: 'idle', name: 'Bulut uykusu', desc: 'Gökte boşta duran bulutlar yavaşça dolar.', base: 36, g: 1.6, max: 10 },
+    { id: 'luck', name: 'Altın dokunuş', desc: 'Çiçekler ve görevler daha çok damla verir. Sınırsız!', base: 45, g: 1.3, max: Infinity, inc: true },
+    { id: 'cool', name: 'Hızlı yetenek', desc: 'Yetenekler daha çabuk hazır olur.', base: 36, g: 1.6, max: 10 },
+    { id: 'bee', name: 'Çalışkan arı', desc: 'Bir arı susayan çiçekleri senin yerine sular.', base: 60, g: 1.6, max: 10 },
+    { id: 'dream', name: 'Rüya bulutu', desc: 'Sen yokken dakikada daha çok damla biriktirir. Sınırsız!', base: 50, g: 1.3, max: Infinity, inc: true },
+    { id: 'vault', name: 'Uyku kasası', desc: 'Çevrimdışı birikim süresini uzatır: her seviye +1 saat.', base: 40, g: 1.35, max: 22 }
   ];
-  function upCost(u) { return Math.round(u.base * Math.pow(1.85, st.up[u.id])); }
-  function luckF() { return 1 + 0.1 * st.up.luck; }
+  function upCost(u, lv) { return Math.round(u.base * CK * Math.pow(u.g, lv === undefined ? st.up[u.id] : lv)); }
+  function luckF() { return (1 + 0.15 * st.up.luck) * msF(st.up.luck); }
+  function dreamF() { return (1 + 0.5 * st.up.dream) * msF(st.up.dream); }
+  var bulkMode = '1';
+  function planBuy(u) {
+    var lv = st.up[u.id], target = bulkMode === 'max' ? Infinity : +bulkMode, n = 0, cost = 0;
+    while (n < target && lv + n < u.max) { var c = upCost(u, lv + n); if (cost + c > st.gold) break; cost += c; n++; }
+    return { n: n, cost: n ? cost : upCost(u) };
+  }
+  function canUp(u) { return st.up[u.id] < u.max && st.gold >= upCost(u); }
+  function tg() { return Math.pow(1.12, st.garden - 1); }
   function isBoss() { return st.garden >= 5 && st.garden % 5 === 0; }
   function waveF() { var m = st.garden % 5; if (st.garden >= 5 && m === 0) return 1.15; if (st.garden > 5 && (m === 1 || m === 2)) return 0.88; return 1; }
   function tierF() { return Math.min(4.5, 1 + 0.14 * (st.garden - 1)) * waveF(); }
@@ -340,7 +367,7 @@ canvas {
   function windStr() { return st.garden >= 3 ? Math.min(70, 12 * (st.garden - 2)) * D().wind * WM('wind') : 0; }
   function windNow() { return calmT > 0 ? 0 : windStr() * evMod('wind') * Math.sin(tAll * 0.5); }
   function money(n) {
-    var v = n * D().reward * luckF() * evMod('reward') * WM('reward') * (st.buffs.reward > 0 ? 1.5 : 1) * prestigeMult() * evtMult(), f = Math.floor(v);
+    var v = n * CK * tg() * D().reward * luckF() * evMod('reward') * WM('reward') * (st.buffs.reward > 0 ? 1.5 : 1) * prestigeMult() * evtMult(), f = Math.floor(v);
     return Math.max(1, f + (Math.random() < v - f ? 1 : 0));
   }
   function tierNote() {
@@ -406,7 +433,7 @@ canvas {
   function yesterday() { return dayStr(new Date(Date.now() - 86400000)); }
   function giftReady() { return st.daily.last !== today(); }
   function nextStreak() { return st.daily.last === yesterday() ? st.daily.streak + 1 : 1; }
-  function giftAmount(s) { return s % 7 === 0 ? 30 * Math.min(3, s / 7) : 5 + 3 * ((s - 1) % 7); }
+  function giftAmount(s) { return CK * (s % 7 === 0 ? 30 * Math.min(3, s / 7) : 5 + 3 * ((s - 1) % 7)); }
 
   /* ---------- oyun durumu ---------- */
   function mkCloud(x, y, col, vx) { return { x: x, y: y, col: col, water: 1, vx: vx, holder: null, tx: 0, ty: 0, acc: 0, wasLow: false, dryMark: false }; }
@@ -463,9 +490,9 @@ canvas {
     { id: 't20', name: 'Kademe 20', desc: 'Yirminci kademeye ulaş.', r: 35, test: function () { return st.stats.maxTier >= 20; } },
     { id: 'rb1', name: 'Gökkuşağı avcısı', desc: 'İlk gökkuşağını çıkar.', r: 10, test: function () { return st.rainbows >= 1; } },
     { id: 'rb3', name: 'Renk ustası', desc: '3 gökkuşağı çıkar.', r: 25, test: function () { return st.rainbows >= 3; } },
-    { id: 'max', name: 'Tam güç', desc: 'Bir yükseltmeyi en üst seviyeye çıkar.', r: 15, test: function () { return UPS.some(function (u) { return st.up[u.id] >= MAXLV; }); } },
+    { id: 'max', name: 'Tam güç', desc: 'Bir yükseltmeyi en üst seviyeye çıkar.', r: 15, test: function () { return UPS.some(function (u) { return st.up[u.id] >= u.max; }); } },
     { id: 'carry', name: 'Su taşıyıcı', desc: 'Bulutları denizde 30 kez doldur.', r: 8, test: function () { return st.stats.refills >= 30; } },
-    { id: 'earn', name: 'Birikimci', desc: 'Toplam 500 damla kazan.', r: 20, test: function () { return st.stats.earned >= 500; } },
+    { id: 'earn', name: 'Birikimci', desc: 'Toplam 50 K damla kazan.', r: 20, test: function () { return st.stats.earned >= 500 * CK; } },
     { id: 'trav', name: 'Gezgin', desc: 'İlk yeni evreni aç.', r: 15, test: function () { return ownedWorlds() >= 1; } },
     { id: 'cosmo', name: 'Evren kaşifi', desc: 'Bütün evrenleri aç.', r: 60, test: function () { return ownedWorlds() >= WORLDS.length - 1; } },
     { id: 'style', name: 'Stil sahibi', desc: '5 kostüm satın al.', r: 15, test: function () { return Object.keys(st.cos.owned).length >= 5; } },
@@ -477,8 +504,8 @@ canvas {
   function checkBadges() {
     BADGES.forEach(function (b) {
       if (!st.badges[b.id] && b.test()) {
-        st.badges[b.id] = true; earn(b.r);
-        say('Rozet kazandın: ' + b.name + ' · +' + b.r + ' damla'); buySound();
+        st.badges[b.id] = true; earn(b.r * CK);
+        say('Rozet kazandın: ' + b.name + ' · +' + fmt(b.r * CK) + ' damla'); buySound();
       }
     });
   }
@@ -488,10 +515,10 @@ canvas {
   function buildUps() {
     UPS.forEach(function (u) {
       var row = document.createElement('div'); row.className = 'row';
-      var pips = ''; for (var i = 0; i < MAXLV; i++) pips += '<i></i>';
+      var pips = ''; if (u.max <= 10) for (var i = 0; i < u.max; i++) pips += '<i></i>'; else pips = '<div class="lvl"></div>';
       row.innerHTML = '<div class="row-t"><b>' + u.name + '<em class="tag" hidden>Hazır</em></b><span>' + u.desc + '</span><div class="pips">' + pips + '</div></div><button class="buy" data-up="' + u.id + '"></button>';
       upsEl.appendChild(row);
-      upRows[u.id] = { row: row, tag: row.querySelector('.tag'), btn: row.querySelector('button'), pips: row.querySelectorAll('.pips i') };
+      upRows[u.id] = { row: row, tag: row.querySelector('.tag'), btn: row.querySelector('button'), pips: row.querySelectorAll('.pips i'), lvl: row.querySelector('.lvl') };
     });
   }
   var abilEl = $('abil'), abilBtns = {};
@@ -510,10 +537,10 @@ canvas {
   }
 
   function affordable() {
-    return UPS.some(function (u) { return st.up[u.id] < MAXLV && st.gold >= upCost(u); });
+    return UPS.some(canUp);
   }
   function readyUps() {
-    return UPS.filter(function (u) { return st.up[u.id] < MAXLV && st.gold >= upCost(u); });
+    return UPS.filter(canUp);
   }
   var notifiedW = null, notified = null, toastTimer = null, toastTab = 'ups';
   function hideToast() { $('toast').hidden = true; clearTimeout(toastTimer); }
@@ -533,13 +560,13 @@ canvas {
     showToast('Yükseltme hazır!', fresh[0].name + ' için yeterli damlan var' + (list.length > 1 ? ' · ' + list.length + ' yükseltme hazır' : '') + '.', 'ups');
     tone(784, 0.18, 0, 'triangle', 0.12); tone(1047, 0.28, 0.12, 'triangle', 0.12);
   }
-  var THEME_COST = { day: 0, dusk: 100, night: 250 };
+  var THEME_COST = { day: 0, dusk: 100 * CK, night: 250 * CK };
   var THEME_NAME = { day: 'Gündüz', dusk: 'Gün batımı', night: 'Gece' };
 
   function updateUI() {
     checkBadges();
     $('tierChip').textContent = 'Kademe ' + st.garden + (isBoss() ? ' · Büyük' : '');
-    var gc = $('goldChip'); gc.textContent = 'Damla ' + st.gold; gc.classList.toggle('ready', affordable());
+    var gc = $('goldChip'); gc.textContent = 'Damla ' + fmt(st.gold); gc.classList.toggle('ready', affordable());
     $('shelfLabel').textContent = 'Koleksiyon' + (st.rainbows ? ' · gökkuşağı ' + st.rainbows : '');
     var slots = document.querySelectorAll('.slot');
     for (var i = 0; i < slots.length; i++) slots[i].classList.toggle('on', !!st.found[slots[i].getAttribute('data-k')]);
@@ -547,17 +574,22 @@ canvas {
     UPS.forEach(function (u) {
       var r = upRows[u.id], lv = st.up[u.id];
       for (var j = 0; j < r.pips.length; j++) r.pips[j].classList.toggle('on', j < lv);
-      if (lv >= MAXLV) { r.btn.textContent = 'En üst'; r.btn.disabled = true; }
-      else { r.btn.textContent = 'Al · ' + upCost(u); r.btn.disabled = st.gold < upCost(u); }
+      if (r.lvl) {
+        var ex = u.id === 'luck' ? 'Ödül ' + fmtX(luckF()) : u.id === 'dream' ? 'Çevrimdışı ' + fmtX(dreamF()) : 'Kasa ' + (2 + lv) + ' saat';
+        var nm = msNext(lv); r.lvl.textContent = 'Sv. ' + lv + (u.max < Infinity ? ' / ' + u.max : '') + ' · ' + ex + (u.inc && nm ? ' · ×2 bonusu: sv. ' + nm : '');
+      }
+      if (lv >= u.max) { r.btn.textContent = 'En üst'; r.btn.disabled = true; }
+      else { var pb = planBuy(u); r.btn.textContent = 'Al' + (pb.n > 1 ? ' ×' + pb.n : '') + ' · ' + fmt(pb.cost); r.btn.disabled = pb.n < 1; }
     });
     var rl = readyUps();
     UPS.forEach(function (u) {
       var on = rl.some(function (r) { return r.id === u.id; });
       upRows[u.id].row.classList.toggle('ready', on); upRows[u.id].tag.hidden = !on;
     });
+    document.querySelectorAll('#bulk button').forEach(function (bb) { bb.setAttribute('aria-pressed', String(bb.getAttribute('data-bulk') === bulkMode)); });
     $('tabUps').innerHTML = 'Yükselt' + (rl.length ? '<span class="badge">' + rl.length + '</span>' : '');
     var pg = prestigeGain(), pbox = $('prestigeBox');
-    pbox.innerHTML = '<div class="row' + (pg > 0 ? ' ready' : '') + '"><div class="row-t"><b>Gökkuşağı Yenileme' + (pg > 0 ? '<em class="tag">Hazır</em>' : '') + '</b><span>Her şeyi sıfırla, kalıcı Gökkuşağı gücü kazan. Her güç tüm ödülleri %8 artırır. Kostüm, evren, rozet ve albüm kalır.</span><span>Şu an: ' + st.prestige.gp + ' güç (ödüller ×' + prestigeMult().toFixed(2).replace('.', ',') + ')' + (pg > 0 ? ' · şimdi yenilersen +' + pg + ' güç' : ' · Kademe 10\'da açılır (şu an ' + st.garden + ')') + '</span></div><button class="buy" id="prestigeBtn"' + (pg > 0 ? '' : ' disabled') + '>' + (prestigeArmed ? 'Emin misin?' : 'Yenile') + '</button></div>';
+    pbox.innerHTML = '<div class="row' + (pg > 0 ? ' ready' : '') + '"><div class="row-t"><b>Gökkuşağı Yenileme' + (pg > 0 ? '<em class="tag">Hazır</em>' : '') + '</b><span>Her şeyi sıfırla, kalıcı Gökkuşağı gücü kazan. Her güç tüm ödülleri %25 artırır. Kostüm, evren, rozet ve albüm kalır.</span><span>Şu an: ' + st.prestige.gp + ' güç (ödüller ×' + prestigeMult().toFixed(2).replace('.', ',') + ')' + (pg > 0 ? ' · şimdi yenilersen +' + pg + ' güç' : ' · Kademe 10\'da açılır (şu an ' + st.garden + ')') + '</span></div><button class="buy" id="prestigeBtn"' + (pg > 0 ? '' : ' disabled') + '>' + (prestigeArmed ? 'Emin misin?' : 'Yenile') + '</button></div>';
     var gpc = $('gpChip'); gpc.hidden = st.prestige.gp <= 0; gpc.textContent = 'Güç ×' + prestigeMult().toFixed(2).replace('.', ',');
     document.body.classList.toggle('calm', motionReduced());
     notifyUps(rl);
@@ -566,12 +598,12 @@ canvas {
     var readyQ = 0, ql = $('questList'); ql.innerHTML = '';
     var gr = giftReady(), gs = nextStreak(), ga = giftAmount(gs);
     var grow = document.createElement('div'); grow.className = 'row' + (gr ? ' ready' : '');
-    grow.innerHTML = '<div class="row-t"><b>Günlük hediye' + (gr ? '<em class="tag">Hazır</em>' : '') + '</b><span>' + (gr ? 'Bugünkü ödül ' + ga + ' damla · seri ' + gs + '. gün' + (gs % 7 === 0 ? ' · büyük ödül günü!' : ' · her 7. gün büyük ödül') : 'Seri ' + st.daily.streak + ' gün. Yarın tekrar gel, 7. günde büyük ödül var.') + '</span></div><button class="buy" data-gift="1"' + (gr ? '' : ' disabled') + '>' + (gr ? 'Al · ' + ga : 'Alındı') + '</button>';
+    grow.innerHTML = '<div class="row-t"><b>Günlük hediye' + (gr ? '<em class="tag">Hazır</em>' : '') + '</b><span>' + (gr ? 'Bugünkü ödül ' + fmt(ga) + ' damla · seri ' + gs + '. gün' + (gs % 7 === 0 ? ' · büyük ödül günü!' : ' · her 7. gün büyük ödül') : 'Seri ' + st.daily.streak + ' gün. Yarın tekrar gel, 7. günde büyük ödül var.') + '</span></div><button class="buy" data-gift="1"' + (gr ? '' : ' disabled') + '>' + (gr ? 'Al · ' + fmt(ga) : 'Alındı') + '</button>';
     ql.appendChild(grow); if (gr) readyQ++;
     st.quests.forEach(function (q, idx) {
       var done = q.p >= q.n; if (done) readyQ++;
       var row = document.createElement('div'); row.className = 'row';
-      row.innerHTML = '<div class="row-t"><b>' + qText(q) + '</b><span>' + q.p + ' / ' + q.n + '</span><div class="bar"><i style="width:' + (q.p / q.n * 100) + '%"></i></div></div><button class="buy" data-q="' + idx + '"' + (done ? '' : ' disabled') + '>' + (done ? 'Al · ' + Math.round(q.r * luckF()) : 'Devam') + '</button>';
+      row.innerHTML = '<div class="row-t"><b>' + qText(q) + '</b><span>' + q.p + ' / ' + q.n + '</span><div class="bar"><i style="width:' + (q.p / q.n * 100) + '%"></i></div></div><button class="buy" data-q="' + idx + '"' + (done ? '' : ' disabled') + '>' + (done ? 'Al · ' + fmt(q.r * CK * luckF()) : 'Devam') + '</button>';
       ql.appendChild(row);
     });
     readyQ += renderMeta();
@@ -584,7 +616,7 @@ canvas {
       if (!unl) lockHtml = '<span><b style="font-weight:700;color:var(--ink)">Kilitli:</b> ' + pv.name + ' evreninde ' + w.need + ' kademe bitir (' + Math.min(wlvl(pv.id), w.need) + ' / ' + w.need + ')</span><div class="bar"><i style="width:' + Math.min(100, wlvl(pv.id) / w.need * 100) + '%"></i></div>';
       else if (own) lockHtml = '<span>Bu evrende bitirilen kademe: ' + wlvl(w.id) + '</span>';
       var row = document.createElement('div'); row.className = 'row' + (can ? ' ready' : '');
-      row.innerHTML = '<div class="row-t"><b>' + w.name + (can ? '<em class="tag">Açılabilir</em>' : '') + '</b><span>' + w.desc + '</span><span><b style="font-weight:700;color:var(--ink)">' + w.tag + ':</b> ' + w.perk + '</span>' + lockHtml + '</div><button class="buy" data-w="' + w.id + '"' + (cur || (!own && !can) ? ' disabled' : '') + '>' + (cur ? 'Seçili' : own ? 'Git' : !unl ? 'Kilitli' : 'Aç · ' + wcost(w)) + '</button>';
+      row.innerHTML = '<div class="row-t"><b>' + w.name + (can ? '<em class="tag">Açılabilir</em>' : '') + '</b><span>' + w.desc + '</span><span><b style="font-weight:700;color:var(--ink)">' + w.tag + ':</b> ' + w.perk + '</span>' + lockHtml + '</div><button class="buy" data-w="' + w.id + '"' + (cur || (!own && !can) ? ' disabled' : '') + '>' + (cur ? 'Seçili' : own ? 'Git' : !unl ? 'Kilitli' : 'Aç · ' + fmt(wcost(w))) + '</button>';
       wl.appendChild(row);
     });
     $('tabWorlds').innerHTML = 'Evrenler' + (wReady.length ? '<span class="badge">' + wReady.length + '</span>' : '');
@@ -595,11 +627,11 @@ canvas {
     }
     notifiedW = curW;
 
-    $('stats').innerHTML = '<div class="stat"><b>' + st.prestige.gp + '</b><span>Gökkuşağı gücü</span></div><div class="stat"><b>' + st.stats.blooms + '</b><span>Açan çiçek</span></div><div class="stat"><b>' + st.stats.maxTier + '</b><span>En yüksek kademe</span></div><div class="stat"><b>' + st.rainbows + '</b><span>Gökkuşağı</span></div><div class="stat"><b>' + st.stats.earned + '</b><span>Toplam damla</span></div><div class="stat"><b>' + (st.stats.bestCombo || 0) + '</b><span>En iyi kombo</span></div><div class="stat"><b>' + st.stats.starsCaught + '</b><span>Yakalanan yıldız</span></div><div class="stat"><b>' + fmtTime(st.stats.sec) + '</b><span>Oynama süresi</span></div>';
+    $('stats').innerHTML = '<div class="stat"><b>' + st.prestige.gp + '</b><span>Gökkuşağı gücü</span></div><div class="stat"><b>' + st.stats.blooms + '</b><span>Açan çiçek</span></div><div class="stat"><b>' + st.stats.maxTier + '</b><span>En yüksek kademe</span></div><div class="stat"><b>' + st.rainbows + '</b><span>Gökkuşağı</span></div><div class="stat"><b>' + fmt(st.stats.earned) + '</b><span>Toplam damla</span></div><div class="stat"><b>' + (st.stats.bestCombo || 0) + '</b><span>En iyi kombo</span></div><div class="stat"><b>' + st.stats.starsCaught + '</b><span>Yakalanan yıldız</span></div><div class="stat"><b>' + fmtTime(st.stats.sec) + '</b><span>Oynama süresi</span></div>';
     var bl = $('badgeList'); bl.innerHTML = '';
     BADGES.forEach(function (b) {
       var on = !!st.badges[b.id], row = document.createElement('div'); row.className = 'row badge-row' + (on ? '' : ' off');
-      row.innerHTML = '<div class="row-t"><b>' + b.name + '</b><span>' + b.desc + ' · ' + b.r + ' damla</span></div><span class="badge-mark" aria-label="' + (on ? 'Kazanıldı' : 'Kilitli') + '">' + (on ? '✓' : '') + '</span>';
+      row.innerHTML = '<div class="row-t"><b>' + b.name + '</b><span>' + b.desc + ' · ' + fmt(b.r * CK) + ' damla</span></div><span class="badge-mark" aria-label="' + (on ? 'Kazanıldı' : 'Kilitli') + '">' + (on ? '✓' : '') + '</span>';
       bl.appendChild(row);
     });
 
@@ -609,8 +641,8 @@ canvas {
     });
     if (curTab === 'shop') buildShop();
     $('diffNote').textContent = D().note;
-    $('thDusk').textContent = THEME_NAME.dusk + (st.set.owned.dusk ? '' : ' · ' + THEME_COST.dusk);
-    $('thNight').textContent = THEME_NAME.night + (st.set.owned.night ? '' : ' · ' + THEME_COST.night);
+    $('thDusk').textContent = THEME_NAME.dusk + (st.set.owned.dusk ? '' : ' · ' + fmt(THEME_COST.dusk));
+    $('thNight').textContent = THEME_NAME.night + (st.set.owned.night ? '' : ' · ' + fmt(THEME_COST.night));
     $('vol').value = st.set.vol; $('motion').checked = motionReduced(); $('testMode').checked = !!st.set.test;
   }
 
@@ -659,10 +691,14 @@ canvas {
     var b = e.target.closest('button[data-up]'); if (!b || b.disabled) return;
     var id = b.getAttribute('data-up');
     var u = UPS.filter(function (x) { return x.id === id; })[0];
-    if (!u || st.up[id] >= MAXLV || st.gold < upCost(u)) return;
-    st.gold -= upCost(u); st.up[id]++;
-    say(u.name + ' seviye ' + st.up[id] + ' oldu!');
+    if (!u) return; var pb = planBuy(u); if (pb.n < 1) return;
+    st.gold -= pb.cost; st.up[id] += pb.n;
+    say(u.name + ' seviye ' + st.up[id] + ' oldu!' + (u.inc && msCount(st.up[id]) > msCount(st.up[id] - pb.n) ? ' Kilometre taşı: ×2!' : ''));
     buySound(); updateUI(); save();
+  });
+  $('bulk').addEventListener('click', function (e) {
+    var b = e.target.closest('button[data-bulk]'); if (!b) return;
+    bulkMode = b.getAttribute('data-bulk'); updateUI();
   });
   $('questList').addEventListener('click', function (e) {
     var g = e.target.closest('button[data-gift]');
@@ -671,15 +707,15 @@ canvas {
       var s = nextStreak(), amt = giftAmount(s);
       st.daily = { last: today(), streak: s }; earn(amt);
       var capeMsg = ''; if (s === 7 && !st.cos.owned.cape) { st.cos.owned.cape = true; capeMsg = ' Kahraman pelerini kazandın!'; }
-      say('Günlük hediye: +' + amt + ' damla · seri ' + s + '. gün.' + capeMsg); buySound(); updateUI(); save();
+      say('Günlük hediye: +' + fmt(amt) + ' damla · seri ' + s + '. gün.' + capeMsg); buySound(); updateUI(); save();
       return;
     }
     var b = e.target.closest('button[data-q]'); if (!b || b.disabled) return;
     var i = +b.getAttribute('data-q'), q = st.quests[i];
     if (!q || q.p < q.n) return;
-    var r = Math.round(q.r * luckF());
+    var r = Math.round(q.r * CK * luckF());
     earn(r); st.quests[i] = newQuest();
-    say('Görev tamam! +' + r + ' damla'); buySound(); updateUI(); save();
+    say('Görev tamam! +' + fmt(r) + ' damla'); buySound(); updateUI(); save();
   });
   abilEl.addEventListener('click', function (e) {
     var b = e.target.closest('button[data-ab]'); if (!b || b.disabled) return;
@@ -691,7 +727,7 @@ canvas {
       var key = seg.getAttribute('data-set'), v = b.getAttribute('data-v');
       if (key === 'shopcloud') { shopCloud = v; updateUI(); return; }
       if (key === 'theme' && !st.set.owned[v]) {
-        if (st.gold < THEME_COST[v]) { say('Bu gökyüzü için ' + THEME_COST[v] + ' damla lazım.'); return; }
+        if (st.gold < THEME_COST[v]) { say('Bu gökyüzü için ' + fmt(THEME_COST[v]) + ' damla lazım.'); return; }
         st.gold -= THEME_COST[v]; st.set.owned[v] = true; buySound(); say(THEME_NAME[v] + ' gökyüzü açıldı!');
       }
       st.set[key] = v; updateUI(); save();
@@ -788,11 +824,11 @@ canvas {
     var cm = 1 + 0.2 * Math.min(combo - 1, 5);
     var reward = money((1 + Math.floor((st.garden - 1) / 4)) * (isBoss() ? 3 : 1) * cm);
     earn(reward);
-    floats.push({ x: s.x, y: s.y - 70, text: '+' + reward, col: '#d6336c', life: 0 });
+    floats.push({ x: s.x, y: s.y - 70, text: '+' + fmt(reward), col: '#d6336c', life: 0 });
     burst(s.x, s.y - 30, HEX[s.key], 22);
     bloomSound();
     if (flies.length < 8) flies.push({ x: s.x, y: s.y - 40, ph: Math.random() * 6, col: HEX[s.key], cx: s.x });
-    say((firstTime ? NAMES[s.key] + ' çiçek bulundu! ' : NAMES[s.key] + ' çiçek açtı! ') + '+' + reward + ' damla' + (combo >= 2 ? ' · kombo ×' + combo : ''));
+    say((firstTime ? NAMES[s.key] + ' çiçek bulundu! ' : NAMES[s.key] + ' çiçek açtı! ') + '+' + fmt(reward) + ' damla' + (combo >= 2 ? ' · kombo ×' + combo : ''));
     if (seeds.every(function (x) { return x.done; }) && gardenTimer <= 0) {
       gardenTimer = 2.4; st.stats.tiers++; weeklyAdd('tier', 1);
       st.wlv[st.world] = wlvl(st.world) + 1;
@@ -800,12 +836,12 @@ canvas {
       if (nx && !st.worlds[nx.id] && wlvl(st.world) === nx.need) showToast('Yeni evren kilidi açıldı!', nx.name + ' artık satın alınabilir.', 'worlds'); questAdd('tier', null, 1);
       var bonus = money((2 + Math.floor(st.garden / 3)) * (isBoss() ? 3 : 1));
       earn(bonus);
-      say('Kademe ' + st.garden + ' tamam! Bonus +' + bonus + ' damla');
+      say('Kademe ' + st.garden + ' tamam! Bonus +' + fmt(bonus) + ' damla');
       tierDoneSound();
       for (var fi = 0; fi < 4; fi++) burst(rnd(50, 310), rnd(90, 300), null, 18, 'confetti');
     }
     if (Object.keys(st.found).length >= 6 && rainbowT <= 0) {
-      rainbowT = 5.2; st.rainbows++; earn(6); fanfare(); say('Gökkuşağı! Bütün renkleri buldun! +6 damla');
+      rainbowT = 5.2; st.rainbows++; earn(6 * CK); fanfare(); say('Gökkuşağı! Bütün renkleri buldun! +' + fmt(6 * CK) + ' damla');
       for (var i = 0; i < 4; i++) burst(rnd(60, 300), rnd(80, 220), null, 14, 'confetti');
     }
     updateUI(); save();
@@ -1403,12 +1439,12 @@ canvas {
     COSTUMES.forEach(function (k) {
       var own = !!st.cos.owned[k.id], worn = st.cos.worn[shopCloud] === k.id;
       var row = document.createElement('div'); row.className = 'row';
-      row.innerHTML = '<canvas class="cprev" width="152" height="120"></canvas><div class="row-t"><b>' + k.name + '</b><span>' + (!own && k.lim ? k.lim : k.desc) + '</span></div><button class="buy" data-cos="' + k.id + '"' + (!own && (k.lim || st.gold < k.cost) ? ' disabled' : '') + '>' + (!own ? (k.lim ? 'Kilitli' : 'Al · ' + k.cost) : worn ? 'Çıkar' : 'Giy') + '</button>';
+      row.innerHTML = '<canvas class="cprev" width="152" height="120"></canvas><div class="row-t"><b>' + k.name + '</b><span>' + (!own && k.lim ? k.lim : k.desc) + '</span></div><button class="buy" data-cos="' + k.id + '"' + (!own && (k.lim || st.gold < k.cost * CK) ? ' disabled' : '') + '>' + (!own ? (k.lim ? 'Kilitli' : 'Al · ' + fmt(k.cost * CK)) : worn ? 'Çıkar' : 'Giy') + '</button>';
       cl.appendChild(row); costumePreview(row.querySelector('canvas'), k.id);
     });
     BOOSTS.forEach(function (k) {
       var row = document.createElement('div'); row.className = 'row';
-      row.innerHTML = '<div class="row-t"><b>' + k.name + '</b><span>' + k.desc + '</span><span id="boostS-' + k.id + '"></span></div><button class="buy" data-boost="' + k.id + '"' + (st.gold < k.cost ? ' disabled' : '') + '>Al · ' + k.cost + '</button>';
+      row.innerHTML = '<div class="row-t"><b>' + k.name + '</b><span>' + k.desc + '</span><span id="boostS-' + k.id + '"></span></div><button class="buy" data-boost="' + k.id + '"' + (st.gold < k.cost * CK ? ' disabled' : '') + '>Al · ' + fmt(k.cost * CK) + '</button>';
       bl.appendChild(row);
     });
     refreshBoostText();
@@ -1423,21 +1459,21 @@ canvas {
     var b = e.target.closest('button[data-cos]'); if (!b || b.disabled) return;
     var id = b.getAttribute('data-cos'), k = COSTUMES.filter(function (x) { return x.id === id; })[0]; if (!k) return;
     if (!st.cos.owned[id]) {
-      if (k.lim || st.gold < k.cost) return;
-      st.gold -= k.cost; st.cos.owned[id] = true; st.cos.worn[shopCloud] = id; buySound(); say(k.name + ' alındı ve giydirildi!');
+      if (k.lim || st.gold < k.cost * CK) return;
+      st.gold -= k.cost * CK; st.cos.owned[id] = true; st.cos.worn[shopCloud] = id; buySound(); say(k.name + ' alındı ve giydirildi!');
     } else st.cos.worn[shopCloud] = st.cos.worn[shopCloud] === id ? '' : id;
     updateUI(); save();
   });
   $('boostList').addEventListener('click', function (e) {
     var b = e.target.closest('button[data-boost]'); if (!b || b.disabled) return;
-    var id = b.getAttribute('data-boost'), k = BOOSTS.filter(function (x) { return x.id === id; })[0]; if (!k || st.gold < k.cost) return;
+    var id = b.getAttribute('data-boost'), k = BOOSTS.filter(function (x) { return x.id === id; })[0]; if (!k || st.gold < k.cost * CK) return;
     if (id === 'dust') {
       var pend = seeds.filter(function (s) { return !s.done; });
       if (!pend.length) { say('Su verilecek tohum kalmadı.'); return; }
-      st.gold -= k.cost; buySound();
+      st.gold -= k.cost * CK; buySound();
       pend.forEach(function (s) { s.idle = 0; s.need.forEach(function (c) { s.fill[c] = Math.min(1, s.fill[c] + 0.5); }); burst(s.x, s.y - 20, '#ffe27a', 8); if (s.need.every(function (c) { return s.fill[c] >= 1; })) bloom(s); });
       say('Çiçek tozu serpildi!');
-    } else { st.gold -= k.cost; st.buffs[id] = Math.min(300, st.buffs[id] + 90); buySound(); say(k.name + ' etkinleşti: 90 saniye!'); }
+    } else { st.gold -= k.cost * CK; st.buffs[id] = Math.min(300, st.buffs[id] + 90); buySound(); say(k.name + ' etkinleşti: 90 saniye!'); }
     updateUI(); save();
   });
 
@@ -1449,13 +1485,13 @@ canvas {
       stars.push({ x: dir > 0 ? -20 : W + 20, y: rnd(60, 210), vx: dir * rnd(55, 80), vy: rnd(-6, 8), r: 15, val: money(2 + Math.floor(st.garden / 3)), gold: true, life: 0, ph: Math.random() * 6 });
       say('Altın yıldız geçiyor! Dokun ya da bir bulutla yakala.');
     } else {
-      stars.push({ x: rnd(20, 340), y: -10, vx: rnd(-20, 20), vy: rnd(75, 115), r: 10, val: Math.random() < 0.25 ? 2 : 1, gold: false, life: 0, ph: Math.random() * 6 });
+      stars.push({ x: rnd(20, 340), y: -10, vx: rnd(-20, 20), vy: rnd(75, 115), r: 10, val: money(0.2) * (Math.random() < 0.25 ? 2 : 1), gold: false, life: 0, ph: Math.random() * 6 });
     }
   }
   function collectStar(i) {
     var sr = stars[i]; if (!sr) return;
     stars.splice(i, 1); earn(sr.val); st.stats.starsCaught++; uiDirty = true; weeklyAdd('star', 1);
-    floats.push({ x: sr.x, y: sr.y - 10, text: '+' + sr.val, col: '#b87800', life: 0 });
+    floats.push({ x: sr.x, y: sr.y - 10, text: '+' + fmt(sr.val), col: '#b87800', life: 0 });
     burst(sr.x, sr.y, '#ffd23f', sr.gold ? 16 : 8);
     tone(1047, 0.15, 0, 'triangle', 0.1); tone(1568, 0.2, 0.08, 'triangle', 0.1);
   }
@@ -1486,14 +1522,14 @@ canvas {
 
 
   /* ---------- meta: prestij, çevrimdışı kazanç, arı, etkinlik, hedefler, albüm ---------- */
-  function prestigeMult() { return 1 + 0.08 * st.prestige.gp; }
+  function prestigeMult() { return 1 + 0.25 * st.prestige.gp; }
   function prestigeGain() { return st.garden >= 10 ? Math.floor((st.garden - 7) / 3) : 0; }
   var prestigeArmed = false, prestigeTimer = null;
   function doPrestige() {
     var gain = prestigeGain(); if (gain < 1) return;
     st.prestige.gp += gain; st.prestige.count++;
     st.garden = 1; st.found = {}; UPKEYS.forEach(function (k) { st.up[k] = 0; });
-    st.gold = 10 * st.prestige.gp; st.buffs = { reward: 0, drain: 0 };
+    st.gold = 10 * CK * st.prestige.gp; st.buffs = { reward: 0, drain: 0 };
     st.quests = []; while (st.quests.length < 3) st.quests.push(newQuest());
     clouds.length = 0; clouds.push(mkCloud(80, 120, 'p', 10), mkCloud(190, 190, 'b', -9), mkCloud(280, 130, 'y', 8));
     drops.length = 0; parts.length = 0; flies.length = 0; stars.length = 0; floats.length = 0;
@@ -1514,19 +1550,19 @@ canvas {
   });
 
   var welcomeOpen = false, welcomeAmt = 0;
-  function offlineCap() { return (2 + 1.5 * st.up.dream) * 3600; }
-  function offlineRate() { return (0.12 + 0.05 * st.up.dream) * (1 + 0.08 * (st.garden - 1)) * prestigeMult() * D().reward; }
+  function offlineCap() { return (2 + st.up.vault) * 3600; }
+  function offlineRate() { return 0.5 * CK * (1 + Math.floor((st.garden - 1) / 4)) * tg() * dreamF() * luckF() * prestigeMult() * D().reward; }
   function checkOffline() {
     if (welcomeOpen || !st.lastSeen) return;
     var away = (Date.now() - st.lastSeen) / 1000; if (away < 300) return;
     var sec = Math.min(away, offlineCap()), amt = Math.max(1, Math.round(sec / 60 * offlineRate()));
     welcomeOpen = true; welcomeAmt = amt;
-    $('welcomeText').textContent = 'Sen yokken (' + fmtTime(Math.round(away)) + ') bulutların çalıştı ve ' + amt + ' damla biriktirdi.' + (away > sec ? ' En fazla ' + (Math.round(offlineCap() / 360) / 10) + ' saatlik kazanç birikir. Rüya bulutunu yükseltirsen bu süre uzar.' : '');
+    $('welcomeText').textContent = 'Sen yokken (' + fmtTime(Math.round(away)) + ') bulutların çalıştı ve ' + fmt(amt) + ' damla biriktirdi.' + (away > sec ? ' En fazla ' + (Math.round(offlineCap() / 360) / 10) + ' saatlik kazanç birikir. Uyku kasasını yükseltirsen bu süre uzar.' : '');
     $('welcome').hidden = false; st.lastSeen = Date.now();
   }
   $('welcomeBtn').addEventListener('click', function () {
     if (!welcomeOpen) return;
-    earn(welcomeAmt); floats.push({ x: 180, y: 260, text: '+' + welcomeAmt, col: '#d6336c', life: 0 });
+    earn(welcomeAmt); floats.push({ x: 180, y: 260, text: '+' + fmt(welcomeAmt), col: '#d6336c', life: 0 });
     welcomeOpen = false; $('welcome').hidden = true; buySound(); updateUI(); save();
   });
 
@@ -1580,7 +1616,7 @@ canvas {
     { id: 'bloomfest', name: 'Çiçek Festivali', desc: 'Bahar bayram yerine dönüyor.', col: '#ff9a4d', cos: 'wings', costName: 'Kelebek kanatları' },
     { id: 'snowfest', name: 'Kar Şenliği', desc: 'Her yer bembeyaz.', col: '#3fa9e0', cos: 'snowflake', costName: 'Kar tanesi tacı' }
   ];
-  var MS = [{ at: 20, kind: 'gold', amt: 30 }, { at: 50, kind: 'cos' }, { at: 100, kind: 'gold', amt: 100 }];
+  var MS = [{ at: 20, kind: 'gold', amt: 30 * CK }, { at: 50, kind: 'cos' }, { at: 100, kind: 'gold', amt: 100 * CK }];
   var evtC = null;
   function evtInfo() {
     var n = Date.now(); if (evtC && n - evtC.t < 4000) return evtC.v;
@@ -1631,7 +1667,7 @@ canvas {
     st.week.goals.forEach(function (g, i) {
       var done = g.p >= g.n, can = done && !g.claimed; if (can) ready++;
       var row = document.createElement('div'); row.className = 'row' + (can ? ' ready' : '');
-      row.innerHTML = '<div class="row-t"><b>' + g.text + '</b><span>' + g.p + ' / ' + g.n + '</span><div class="bar"><i style="width:' + (g.p / g.n * 100) + '%"></i></div></div><button class="buy" data-wk="' + i + '"' + (can ? '' : ' disabled') + '>' + (g.claimed ? 'Alındı' : done ? 'Al · ' + Math.round(g.r * luckF()) : 'Devam') + '</button>';
+      row.innerHTML = '<div class="row-t"><b>' + g.text + '</b><span>' + g.p + ' / ' + g.n + '</span><div class="bar"><i style="width:' + (g.p / g.n * 100) + '%"></i></div></div><button class="buy" data-wk="' + i + '"' + (can ? '' : ' disabled') + '>' + (g.claimed ? 'Alındı' : done ? 'Al · ' + fmt(g.r * CK * luckF()) : 'Devam') + '</button>';
       wl2.appendChild(row);
     });
 
@@ -1640,7 +1676,7 @@ canvas {
       var n = st.album.n[k] || 0, c = st.album.c[k] || 0, nxt = ALBUM_AT[c], can = nxt !== undefined && n >= nxt; if (can) ready++;
       var prev = c > 0 ? ALBUM_AT[c - 1] : 0, pr = nxt === undefined ? 100 : Math.min(100, (n - prev) / (nxt - prev) * 100);
       var row = document.createElement('div'); row.className = 'row' + (can ? ' ready' : '');
-      row.innerHTML = '<span class="adot" style="background:' + HEX[k] + '"></span><div class="row-t"><b>' + NAMES[k] + ' çiçek · ' + n + '</b><span>' + (nxt === undefined ? 'Albüm tamamlandı!' : 'Sonraki hedef: ' + nxt + ' çiçek') + '</span><div class="bar"><i style="width:' + pr + '%"></i></div></div><button class="buy" data-al="' + k + '"' + (can ? '' : ' disabled') + '>' + (nxt === undefined ? 'Tamam' : can ? 'Al · ' + ALBUM_R[c] : 'Devam') + '</button>';
+      row.innerHTML = '<span class="adot" style="background:' + HEX[k] + '"></span><div class="row-t"><b>' + NAMES[k] + ' çiçek · ' + n + '</b><span>' + (nxt === undefined ? 'Albüm tamamlandı!' : 'Sonraki hedef: ' + nxt + ' çiçek') + '</span><div class="bar"><i style="width:' + pr + '%"></i></div></div><button class="buy" data-al="' + k + '"' + (can ? '' : ' disabled') + '>' + (nxt === undefined ? 'Tamam' : can ? 'Al · ' + fmt(ALBUM_R[c] * CK) : 'Devam') + '</button>';
       al.appendChild(row);
     });
     return ready;
@@ -1650,20 +1686,20 @@ canvas {
     var at = +b.getAttribute('data-ms'), info = ensureEvt(); if (!info.active || st.evt.claimed[at] || st.evt.pts < at) return;
     var m = MS.filter(function (x) { return x.at === at; })[0]; if (!m) return;
     st.evt.claimed[at] = true;
-    if (m.kind === 'gold') { earn(m.amt); say('Etkinlik ödülü: +' + m.amt + ' damla!'); }
+    if (m.kind === 'gold') { earn(m.amt); say('Etkinlik ödülü: +' + fmt(m.amt) + ' damla!'); }
     else { st.cos.owned[info.def.cos] = true; say(info.def.costName + ' kostümü kazandın! Mağazadan giydir.'); }
     buySound(); updateUI(); save();
   });
   $('weeklyList').addEventListener('click', function (e) {
     var b = e.target.closest('button[data-wk]'); if (!b || b.disabled) return;
     var g = st.week.goals[+b.getAttribute('data-wk')]; if (!g || g.claimed || g.p < g.n) return;
-    var r = Math.round(g.r * luckF()); g.claimed = true; earn(r); say('Haftalık hedef tamam! +' + r + ' damla'); buySound(); updateUI(); save();
+    var r = Math.round(g.r * CK * luckF()); g.claimed = true; earn(r); say('Haftalık hedef tamam! +' + fmt(r) + ' damla'); buySound(); updateUI(); save();
   });
   $('albumList').addEventListener('click', function (e) {
     var b = e.target.closest('button[data-al]'); if (!b || b.disabled) return;
     var k = b.getAttribute('data-al'), c = st.album.c[k] || 0, nxt = ALBUM_AT[c];
     if (nxt === undefined || (st.album.n[k] || 0) < nxt) return;
-    st.album.c[k] = c + 1; earn(ALBUM_R[c]); say(NAMES[k] + ' albümü: +' + ALBUM_R[c] + ' damla!'); buySound(); updateUI(); save();
+    st.album.c[k] = c + 1; earn(ALBUM_R[c] * CK); say(NAMES[k] + ' albümü: +' + fmt(ALBUM_R[c] * CK) + ' damla!'); buySound(); updateUI(); save();
   });
 
   function drawParts() {
@@ -1776,6 +1812,3 @@ canvas {
   document.addEventListener('visibilitychange', function () { if (document.hidden) save(); else checkOffline(); });
 })();
 </script>
-
-</body>
-</html>
