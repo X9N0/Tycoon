@@ -359,9 +359,14 @@ canvas {
   function dreamF() { return (1 + 0.5 * st.up.dream) * msF(st.up.dream); }
   var bulkMode = '1';
   function planBuy(u) {
-    var lv = st.up[u.id], target = bulkMode === 'max' ? Infinity : +bulkMode, n = 0, cost = 0;
-    while (n < target && lv + n < u.max) { var c = upCost(u, lv + n); if (cost + c > st.gold) break; cost += c; n++; }
-    return { n: n, cost: n ? cost : upCost(u) };
+    var lv = st.up[u.id], n = 0, cost = 0, i, c;
+    if (bulkMode === 'max') {
+      while (lv + n < u.max) { c = upCost(u, lv + n); if (cost + c > st.gold) break; cost += c; n++; }
+      return { n: n, cost: n ? cost : upCost(u), ok: n > 0 };
+    }
+    var want = Math.min(+bulkMode, u.max - lv);
+    for (i = 0; i < want; i++) cost += upCost(u, lv + i);
+    return { n: want, cost: cost, ok: want > 0 && cost <= st.gold };
   }
   function canUp(u) { return st.up[u.id] < u.max && st.gold >= upCost(u); }
   function tg() { return Math.pow(1.11, st.garden - 1); }
@@ -602,7 +607,7 @@ canvas {
         var nm = msNext(lv); r.lvl.textContent = 'Sv. ' + lv + (u.max < Infinity ? ' / ' + u.max : '') + ' · ' + ex + (u.inc && nm ? ' · ×2 bonusu: sv. ' + nm : '');
       }
       if (lv >= u.max) { r.btn.textContent = 'En üst'; r.btn.disabled = true; }
-      else { var pb = planBuy(u); r.btn.textContent = 'Al' + (pb.n > 1 ? ' ×' + pb.n : '') + ' · ' + fmt(pb.cost); r.btn.disabled = pb.n < 1; }
+      else { var pb = planBuy(u); r.btn.textContent = 'Al' + (pb.n > 1 || bulkMode !== '1' && bulkMode !== 'max' ? ' ×' + Math.max(pb.n, 1) : '') + ' · ' + fmt(pb.cost); r.btn.disabled = !pb.ok; }
     });
     var rl = readyUps();
     UPS.forEach(function (u) {
@@ -721,7 +726,7 @@ canvas {
     var b = e.target.closest('button[data-up]'); if (!b || b.disabled) return;
     var id = b.getAttribute('data-up');
     var u = UPS.filter(function (x) { return x.id === id; })[0];
-    if (!u) return; var pb = planBuy(u); if (pb.n < 1) return;
+    if (!u) return; var pb = planBuy(u); if (!pb.ok) return;
     st.gold -= pb.cost; st.up[id] += pb.n;
     say(u.name + ' seviye ' + st.up[id] + ' oldu!' + (u.inc && msCount(st.up[id]) > msCount(st.up[id] - pb.n) ? ' Kilometre taşı: ×2!' : ''));
     buySound(); updateUI(); save();
