@@ -185,6 +185,7 @@ canvas {
     <div class="setrow"><b>Gökyüzü</b><div class="seg" data-set="theme"><button data-v="day">Gündüz</button><button data-v="dusk" id="thDusk">Gün batımı</button><button data-v="night" id="thNight">Gece</button></div><small>Yeni gökyüzleri damlayla açılır. Yalnızca Gökyüzü evreninde görünür.</small></div>
     <div class="setrow"><b>Bulut yüzü</b><div class="seg" data-set="face"><button data-v="smile">Gülen</button><button data-v="sleepy">Uykulu</button><button data-v="cool">Havalı</button></div></div>
     <label class="setrow check"><input type="checkbox" id="motion"> Hareketi azalt</label>
+    <label class="setrow check"><input type="checkbox" id="testMode"> Test modu: evrenler bedava</label>
     <button class="danger" id="resetBtn">Tüm ilerlemeyi sıfırla</button>
   </section>
 </div>
@@ -249,6 +250,7 @@ canvas {
   function worldById(id) { for (var i = 0; i < WORLDS.length; i++) if (WORLDS[i].id === id) return WORLDS[i]; return WORLDS[0]; }
   function WM(k) { var m = worldById(st.world).mods; return m[k] !== undefined ? m[k] : 1; }
   function liquidTo() { return worldById(st.world).to; }
+  function wcost(w) { return st.set.test ? 0 : w.cost; }
   function ownedWorlds() { return WORLDS.filter(function (w) { return w.id !== 'sky' && st.worlds[w.id]; }).length; }
 
   /* ---------- zorluk, kademe, yükseltme hesapları ---------- */
@@ -521,10 +523,10 @@ canvas {
     $('tabQuests').innerHTML = 'Görevler' + (readyQ ? '<span class="badge">' + readyQ + '</span>' : '');
     var wl = $('worldList'); wl.innerHTML = ''; var wReady = [];
     WORLDS.forEach(function (w) {
-      var own = !!st.worlds[w.id], cur = st.world === w.id, can = !own && st.gold >= w.cost;
+      var own = !!st.worlds[w.id], cur = st.world === w.id, can = !own && st.gold >= wcost(w);
       if (can) wReady.push(w);
       var row = document.createElement('div'); row.className = 'row' + (can ? ' ready' : '');
-      row.innerHTML = '<div class="row-t"><b>' + w.name + (can ? '<em class="tag">Açılabilir</em>' : '') + '</b><span>' + w.desc + '</span><span><b style="font-weight:700;color:var(--ink)">' + w.tag + ':</b> ' + w.perk + '</span></div><button class="buy" data-w="' + w.id + '"' + (cur || (!own && !can) ? ' disabled' : '') + '>' + (cur ? 'Seçili' : own ? 'Git' : 'Aç · ' + w.cost) + '</button>';
+      row.innerHTML = '<div class="row-t"><b>' + w.name + (can ? '<em class="tag">Açılabilir</em>' : '') + '</b><span>' + w.desc + '</span><span><b style="font-weight:700;color:var(--ink)">' + w.tag + ':</b> ' + w.perk + '</span></div><button class="buy" data-w="' + w.id + '"' + (cur || (!own && !can) ? ' disabled' : '') + '>' + (cur ? 'Seçili' : own ? 'Git' : 'Aç · ' + wcost(w)) + '</button>';
       wl.appendChild(row);
     });
     $('tabWorlds').innerHTML = 'Evrenler' + (wReady.length ? '<span class="badge">' + wReady.length + '</span>' : '');
@@ -550,7 +552,7 @@ canvas {
     $('diffNote').textContent = D().note;
     $('thDusk').textContent = THEME_NAME.dusk + (st.set.owned.dusk ? '' : ' · ' + THEME_COST.dusk);
     $('thNight').textContent = THEME_NAME.night + (st.set.owned.night ? '' : ' · ' + THEME_COST.night);
-    $('vol').value = st.set.vol; $('motion').checked = motionReduced();
+    $('vol').value = st.set.vol; $('motion').checked = motionReduced(); $('testMode').checked = !!st.set.test;
   }
 
   /* ---------- tıklamalar ---------- */
@@ -578,8 +580,8 @@ canvas {
     var b = e.target.closest('button[data-w]'); if (!b || b.disabled) return;
     var w = worldById(b.getAttribute('data-w'));
     if (!st.worlds[w.id]) {
-      if (st.gold < w.cost) return;
-      st.gold -= w.cost; st.worlds[w.id] = true; buySound();
+      if (st.gold < wcost(w)) return;
+      st.gold -= wcost(w); st.worlds[w.id] = true; buySound();
     }
     setWorld(w.id);
   });
@@ -628,6 +630,7 @@ canvas {
   });
   $('vol').addEventListener('input', function (e) { st.set.vol = +e.target.value; });
   $('vol').addEventListener('change', function () { save(); tone(784, 0.2, 0, 'triangle', 0.12); });
+  $('testMode').addEventListener('change', function (e) { st.set.test = e.target.checked; updateUI(); save(); });
   $('motion').addEventListener('change', function (e) { st.set.motion = e.target.checked; save(); });
   var resetArmed = false, resetTimer = null;
   $('resetBtn').addEventListener('click', function (e) {
