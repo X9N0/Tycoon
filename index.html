@@ -316,6 +316,8 @@ canvas {
   function fanfare() { for (var i = 0; i < 6; i++) tone(PENTA[i], 0.5, i * 0.12, 'triangle', 0.15); tone(1319, 0.9, 0.8, 'triangle', 0.15); }
   function splashSound() { tone(700, 0.12, 0, 'sine', 0.08); tone(950, 0.12, 0.08, 'sine', 0.08); }
   function buySound() { tone(660, 0.15, 0, 'triangle', 0.12); tone(990, 0.25, 0.1, 'triangle', 0.12); }
+  function tierDoneSound() { [523, 659, 784, 1047, 1319].forEach(function (f, i) { tone(f, 0.45, i * 0.07, 'triangle', 0.13); }); }
+  function tierStartSound() { tone(880, 0.25, 0, 'sine', 0.1); tone(1319, 0.45, 0.12, 'sine', 0.1); tone(1760, 0.5, 0.26, 'sine', 0.08); }
   function warnSound() { tone(300, 0.25, 0, 'sawtooth', 0.06); tone(240, 0.3, 0.15, 'sawtooth', 0.06); }
 
   var soundBtn = document.getElementById('sound');
@@ -340,10 +342,10 @@ canvas {
   function mkCloud(x, y, col, vx) { return { x: x, y: y, col: col, water: 1, vx: vx, holder: null, tx: 0, ty: 0, acc: 0, wasLow: false, dryMark: false }; }
   var clouds = [mkCloud(80, 120, 'p', 10), mkCloud(190, 190, 'b', -9), mkCloud(280, 130, 'y', 8)];
   var seeds = [], drops = [], parts = [], flies = [];
-  var gardenTimer = 0, rainbowT = 0, tAll = 0, bannerT = 0, bannerTitle = '', bannerSub = '', sunFlash = 0, abilTick = 0;
+  var tierFx = 0, petalT = 0, gardenTimer = 0, rainbowT = 0, tAll = 0, bannerT = 0, bannerTitle = '', bannerSub = '', sunFlash = 0, abilTick = 0;
   var STARS = []; for (var si = 0; si < 30; si++) STARS.push({ x: rnd(8, 352), y: rnd(8, 300), r: rnd(0.8, 1.8), ph: rnd(0, 6) });
 
-  function newGarden() {
+  function newGarden(fx) {
     var n = Math.min(6, 4 + Math.floor((st.garden - 1) / 3));
     var allowed = st.garden <= 1 ? ['p', 'b', 'y'] : KEYS;
     if (isBoss()) allowed = ['bp', 'py', 'by'];
@@ -357,7 +359,8 @@ canvas {
       need.forEach(function (c) { fill[c] = 0; });
       seeds.push({ x: 0, y: 455, key: key, need: need, fill: fill, done: false, t: 0, row: 0, idle: 0 });
     }
-    seeds.forEach(function (s, i) { s.x = (W / (n + 1)) * (i + 1); s.row = n >= 5 ? i % 2 : 0; });
+    seeds.forEach(function (s, i) { s.x = (W / (n + 1)) * (i + 1); s.row = n >= 5 ? i % 2 : 0; s.born = fx ? -i * 0.12 : 1; });
+    if (fx) { tierFx = 1.8; petalT = 1.8; tierStartSound(); }
     st.stats.maxTier = Math.max(st.stats.maxTier, st.garden);
     bannerT = 3.2; bannerTitle = 'Kademe ' + st.garden; bannerSub = tierNote();
   }
@@ -653,6 +656,8 @@ canvas {
       var bonus = money((2 + Math.floor(st.garden / 3)) * (isBoss() ? 3 : 1));
       earn(bonus);
       say('Kademe ' + st.garden + ' tamam! Bonus +' + bonus + ' damla');
+      tierDoneSound();
+      for (var fi = 0; fi < 4; fi++) burst(rnd(50, 310), rnd(90, 300), null, 18, 'confetti');
     }
     if (Object.keys(st.found).length >= 6 && rainbowT <= 0) {
       rainbowT = 5.2; st.rainbows++; earn(6); fanfare(); say('Gökkuşağı! Bütün renkleri buldun! +6 damla');
@@ -670,6 +675,13 @@ canvas {
     tAll += dt; st.stats.sec += dt;
     if (bannerT > 0) bannerT -= dt;
     if (sunFlash > 0) sunFlash -= dt;
+    if (tierFx > 0) tierFx -= dt;
+    seeds.forEach(function (s) { if (s.born < 1) s.born += dt; });
+    if (petalT > 0) {
+      petalT -= dt;
+      var np = motionReduced() ? 0.3 : 1.2;
+      while (Math.random() < np * dt * 40 && np > 0) { np -= 1 / (dt * 40); parts.push({ x: rnd(0, W), y: -10, vx: rnd(-25, 25), vy: rnd(50, 100), life: 0, max: rnd(2, 3.2), col: HEX[KEYS[Math.floor(Math.random() * 6)]], r: rnd(3, 5.5), kind: 'petal', rot: Math.random() * 6 }); }
+    }
     if (calmT > 0) calmT -= dt;
     if (comboT > 0) { comboT -= dt; if (comboT <= 0) combo = 0; }
     ABIL.forEach(function (a) { if (cdLeft[a.id] > 0) cdLeft[a.id] = Math.max(0, cdLeft[a.id] - dt); });
@@ -752,7 +764,7 @@ canvas {
     if (gardenTimer > 0) {
       gardenTimer -= dt;
       if (gardenTimer <= 0) {
-        st.garden++; drops.length = 0; newGarden(); updateUI(); save();
+        st.garden++; drops.length = 0; newGarden(true); updateUI(); save();
         say('Kademe ' + st.garden + ': ' + tierNote());
         for (var k = 0; k < 3; k++) burst(rnd(40, 320), GROUND, null, 8);
       }
@@ -763,7 +775,8 @@ canvas {
       var q = parts[p]; q.life += dt;
       if (q.life > q.max) { parts.splice(p, 1); continue; }
       q.x += q.vx * dt; q.y += q.vy * dt;
-      q.vy += (q.kind === 'bubble' ? -40 : 260) * dt; q.vx *= 0.99;
+      q.vy += (q.kind === 'bubble' ? -40 : q.kind === 'petal' ? 15 : 260) * dt;
+      if (q.kind === 'petal') q.x += Math.sin(tAll * 3 + q.rot * 5) * 30 * dt; q.vx *= 0.99;
     }
   }
 
@@ -931,6 +944,7 @@ canvas {
     parts.forEach(function (q) {
       ctx.globalAlpha = Math.max(0, 1 - q.life / q.max);
       if (q.kind === 'confetti') { ctx.save(); ctx.translate(q.x, q.y); ctx.rotate(q.rot + q.life * 6); ctx.fillStyle = q.col; ctx.fillRect(-q.r, -q.r / 2, q.r * 2, q.r); ctx.restore(); }
+      else if (q.kind === 'petal') { ctx.save(); ctx.translate(q.x, q.y); ctx.rotate(q.rot + q.life * 2.5); ctx.fillStyle = q.col; ctx.beginPath(); ctx.ellipse(0, 0, q.r * 1.5, q.r * 0.8, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore(); }
       else if (q.kind === 'bubble') { ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(q.x, q.y, q.r, 0, Math.PI * 2); ctx.stroke(); }
       else { ctx.fillStyle = q.col; circle(q.x, q.y, q.r); }
     });
@@ -953,12 +967,43 @@ canvas {
     if (combo >= 2) { pill(170, y, 'Kombo ×' + combo + ' · +' + (Math.min(combo - 1, 5) * 20) + '%', '#ff6f91'); }
   }
 
+  function star(x, y, r, col) {
+    ctx.fillStyle = col; ctx.beginPath();
+    for (var i = 0; i < 8; i++) { var rr = i % 2 ? r * 0.4 : r, an = i / 8 * Math.PI * 2 - Math.PI / 2; ctx.lineTo(x + Math.cos(an) * rr, y + Math.sin(an) * rr); }
+    ctx.closePath(); ctx.fill();
+  }
   function drawOverlay() {
     if (sunFlash > 0) { ctx.fillStyle = 'rgba(255,240,170,' + (sunFlash * 0.55) + ')'; ctx.fillRect(0, 0, W, H); }
+    if (tierFx > 0) {
+      var p = 1 - tierFx / 1.8, still = motionReduced();
+      ctx.save();
+      ctx.fillStyle = 'rgba(255,255,255,' + (0.4 * Math.pow(1 - p, 2.5)) + ')'; ctx.fillRect(0, 0, W, H);
+      if (!still) {
+        for (var ri = 0; ri < 3; ri++) {
+          var pr = p - ri * 0.1; if (pr <= 0 || pr >= 1) continue;
+          ctx.globalAlpha = (1 - pr) * 0.7; ctx.lineWidth = 3 + 9 * (1 - pr);
+          ctx.strokeStyle = ri === 0 ? '#ffe27a' : ri === 1 ? '#ff9fc0' : '#9bd8ff';
+          ctx.beginPath(); ctx.arc(180, 280, pr * 430, 0, Math.PI * 2); ctx.stroke();
+        }
+        ctx.globalAlpha = Math.sin(Math.min(1, p * 1.4) * Math.PI) * 0.5;
+        var sx0 = -160 + p * 640, sg = ctx.createLinearGradient(sx0, 0, sx0 + 120, 0);
+        sg.addColorStop(0, 'rgba(255,255,255,0)'); sg.addColorStop(0.5, 'rgba(255,255,255,0.9)'); sg.addColorStop(1, 'rgba(255,255,255,0)');
+        ctx.fillStyle = sg; ctx.fillRect(0, 0, W, H);
+      }
+      ctx.restore();
+    }
     if (bannerT <= 0) return;
     var a = Math.max(0, Math.min(1, (3.2 - bannerT) / 0.25, bannerT / 0.6));
     ctx.save(); ctx.globalAlpha = a;
     var w = 290, h = 66, x = (W - w) / 2, y = 245;
+    var pop = motionReduced() ? 1 : Math.max(0.01, easeOutBack(Math.min(1, (3.2 - bannerT) / 0.55)));
+    ctx.translate(W / 2, y + h / 2); ctx.scale(pop, pop); ctx.translate(-W / 2, -(y + h / 2));
+    if (!motionReduced() && /^Kademe/.test(bannerTitle)) {
+      for (var si2 = 0; si2 < 6; si2++) {
+        var ang = si2 / 6 * Math.PI * 2 + tAll * 1.2, rx = 175, ry = 52;
+        star(W / 2 + Math.cos(ang) * rx, y + h / 2 + Math.sin(ang) * ry, 5 + (si2 % 2) * 2, si2 % 2 ? '#ffd23f' : '#ff8fb1');
+      }
+    }
     ctx.fillStyle = 'rgba(255,255,255,0.96)';
     ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(x, y, w, h, 18); else ctx.rect(x, y, w, h); ctx.fill();
     ctx.textAlign = 'center';
@@ -969,7 +1014,12 @@ canvas {
 
   function draw() {
     drawBackground(); drawRainbow(); drawGround(); drawWind();
-    seeds.forEach(drawSeed);
+    seeds.forEach(function (s) {
+      if (s.born >= 1) { drawSeed(s); return; }
+      if (s.born <= 0) return;
+      var k = easeOutBack(s.born);
+      ctx.save(); ctx.translate(s.x, s.y + 14); ctx.scale(k, k); ctx.translate(-s.x, -(s.y + 14)); drawSeed(s); ctx.restore();
+    });
     flies.forEach(drawFly);
     drops.forEach(function (d) { drawDrop(d.x, d.y, 4, HEX[d.col]); });
     clouds.slice().sort(function (a, b) { return a.y - b.y; }).forEach(drawCloud);
