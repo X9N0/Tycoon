@@ -199,6 +199,7 @@ canvas {
     <div class="bulk" id="bulk"><button data-bulk="1">×1</button><button data-bulk="10">×10</button><button data-bulk="100">×100</button><button data-bulk="max">Maks</button></div>
     <div class="mgr-h">Bulut yöneticileri</div>
     <div id="mgrBox"></div>
+    <div id="treeBox"></div>
     <div class="mgr-h">Yükseltmeler</div>
     <div id="ups"></div>
   </section>
@@ -238,6 +239,7 @@ canvas {
 
   <section class="panel" id="panel-set" role="tabpanel" hidden>
     <h2>Ayarlar</h2>
+    <div class="setrow"><b>Dil</b><div class="seg" data-set="lang"><button data-v="tr">Türkçe</button><button data-v="en">English</button><button data-v="de">Deutsch</button></div></div>
     <div class="setrow"><b>Zorluk</b><div class="seg" data-set="diff"><button data-v="easy">Rahat</button><button data-v="normal">Normal</button><button data-v="hard">Zor</button></div><small id="diffNote"></small></div>
     <div class="setrow"><b>Ses seviyesi</b><input type="range" id="vol" min="0" max="100" aria-label="Ses seviyesi"></div>
     <div class="setrow"><b>Gökyüzü</b><div class="seg" data-set="theme"><button data-v="day">Gündüz</button><button data-v="dusk" id="thDusk">Gün batımı</button><button data-v="night" id="thNight">Gece</button></div><small>Yeni gökyüzleri damlayla açılır. Yalnızca Gökyüzü evreninde görünür.</small></div>
@@ -269,6 +271,13 @@ canvas {
 
   /* ---------- kayıt ---------- */
   var UPKEYS = ['power', 'tank', 'refill', 'wide', 'idle', 'luck', 'cool', 'bee', 'dream', 'vault'];
+  var TREE = [
+    { id: 'inc', name: 'Gökkuşağı bereketi', desc: 'Bütün kazançlar her seviyede %10 artar.', max: 10, c0: 2, cs: 1 },
+    { id: 'crit', name: 'Altın çiçek şansı', desc: 'Altın çiçek (10 kat damla) şansı her seviyede +%2.', max: 5, c0: 1, cs: 1 },
+    { id: 'mgr', name: 'Çevik yöneticiler', desc: 'Yöneticiler her seviyede %8 daha sık su verir.', max: 5, c0: 1, cs: 1 },
+    { id: 'vault', name: 'Derin uyku', desc: 'Çevrimdışı birikim süresi her seviyede +1 saat.', max: 5, c0: 1, cs: 1 },
+    { id: 'start', name: 'Zengin başlangıç', desc: 'Yenilemeden sonra daha çok damlayla başlarsın.', max: 5, c0: 1, cs: 1 }
+  ];
   var CK = 100; /* damla ölçeği: eski sayıların yüz katı */
   var SUF = ['', ' K', ' M', ' B', ' T', ' aa', ' ab', ' ac', ' ad', ' ae', ' af', ' ag', ' ah', ' ai', ' aj'];
   function fmt(n) {
@@ -285,9 +294,9 @@ canvas {
   function msNext(lv) { for (var i = 0; i < MSTONES.length; i++) if (MSTONES[i] > lv) return MSTONES[i]; return 0; }
   function defaults() {
     return { ver: 3, garden: 1, rainbows: 0, found: {}, gold: 0, up: {}, quests: [], badges: {},
-      daily: { last: '', streak: 0 }, world: 'sky', worlds: { sky: true }, wlv: {}, prestige: { count: 0, gp: 0 }, album: { n: {}, c: {} }, evt: { id: '', pts: 0, claimed: {} }, week: { id: '', goals: [] }, lastSeen: 0, mgr: {}, cos: { owned: {}, worn: {} }, buffs: { reward: 0, drain: 0 },
+      daily: { last: '', streak: 0 }, world: 'sky', worlds: { sky: true }, wlv: {}, prestige: { count: 0, gp: 0 }, album: { n: {}, c: {} }, evt: { id: '', pts: 0, claimed: {} }, week: { id: '', goals: [] }, lastSeen: 0, mgr: {}, tree: {}, cos: { owned: {}, worn: {} }, buffs: { reward: 0, drain: 0 },
       stats: { blooms: 0, tiers: 0, refills: 0, sec: 0, maxTier: 1, earned: 0, starsCaught: 0 },
-      set: { diff: 'normal', vol: 80, theme: 'day', face: 'smile', motion: null, owned: { day: true } } };
+      set: { lang: 'tr', diff: 'normal', vol: 80, theme: 'day', face: 'smile', motion: null, owned: { day: true } } };
   }
   var st = defaults();
   try {
@@ -300,6 +309,7 @@ canvas {
     st.up = st.up || {}; UPKEYS.forEach(function (k) { st.up[k] = st.up[k] || 0; });
     st.quests = st.quests || []; st.badges = st.badges || {};
     st.daily = st.daily || d.daily;
+    st.tree = st.tree || {}; TREE.forEach(function (n) { st.tree[n.id] = st.tree[n.id] || 0; });
     st.mgr = st.mgr || {}; ['p', 'b', 'y'].forEach(function (k) { st.mgr[k] = st.mgr[k] || 0; });
     st.wlv = st.wlv || {}; st.cos = st.cos || { owned: {}, worn: {} }; st.cos.owned = st.cos.owned || {}; st.cos.worn = st.cos.worn || {}; st.buffs = st.buffs || { reward: 0, drain: 0 }; st.buffs.reward = st.buffs.reward || 0; st.buffs.drain = st.buffs.drain || 0;
     st.prestige = st.prestige || { count: 0, gp: 0 }; st.prestige.count = st.prestige.count || 0; st.prestige.gp = st.prestige.gp || 0;
@@ -653,7 +663,7 @@ canvas {
       row.innerHTML = '<div class="row-t"><b>' + w.name + (can ? '<em class="tag">Açılabilir</em>' : '') + '</b><span>' + w.desc + '</span><span><b style="font-weight:700;color:var(--ink)">' + w.tag + ':</b> ' + w.perk + '</span>' + lockHtml + '</div><button class="buy" data-w="' + w.id + '"' + (cur || (!own && !can) ? ' disabled' : '') + '>' + (cur ? 'Seçili' : own ? 'Git' : !unl ? 'Kilitli' : 'Aç · ' + fmt(wcost(w))) + '</button>';
       wl.appendChild(row);
     });
-    buildWorldMap(); buildMgr();
+    buildWorldMap(); buildMgr(); buildTree();
     $('tabWorlds').innerHTML = 'Evrenler' + (wReady.length ? '<span class="badge">' + wReady.length + '</span>' : '');
     var curW = {}; wReady.forEach(function (w) { curW[w.id] = true; });
     if (notifiedW !== null) {
@@ -771,7 +781,7 @@ canvas {
         if (st.gold < THEME_COST[v]) { say('Bu gökyüzü için ' + fmt(THEME_COST[v]) + ' damla lazım.'); return; }
         st.gold -= THEME_COST[v]; st.set.owned[v] = true; buySound(); say(THEME_NAME[v] + ' gökyüzü açıldı!');
       }
-      st.set[key] = v; updateUI(); save();
+      st.set[key] = v; if (key === 'lang') setLang(v); updateUI(); save();
     });
   });
   $('vol').addEventListener('input', function (e) { st.set.vol = +e.target.value; });
@@ -863,13 +873,15 @@ canvas {
     combo = comboT > 0 ? combo + 1 : 1; comboT = 7;
     if (combo > (st.stats.bestCombo || 0)) st.stats.bestCombo = combo;
     var cm = 1 + 0.2 * Math.min(combo - 1, 5);
-    var reward = money((1 + Math.floor((st.garden - 1) / 4)) * (isBoss() ? 3 : 1) * cm);
+    s.crit = Math.random() < critP();
+    var reward = money((1 + Math.floor((st.garden - 1) / 4)) * (isBoss() ? 3 : 1) * cm * (s.crit ? 10 : 1));
     earn(reward);
-    floats.push({ x: s.x, y: s.y - 70, text: '+' + fmt(reward), col: '#d6336c', life: 0 });
+    floats.push({ x: s.x, y: s.y - 70, text: (s.crit ? '★ ' : '+') + fmt(reward), col: s.crit ? '#e0a100' : '#d6336c', life: 0 });
+    if (s.crit) { burst(s.x, s.y - 40, '#ffd23f', 30); tone(1047, 0.2, 0, 'triangle', 0.14); tone(1319, 0.2, 0.1, 'triangle', 0.14); tone(1568, 0.3, 0.2, 'triangle', 0.14); }
     burst(s.x, s.y - 30, HEX[s.key], 22);
     bloomSound();
     if (flies.length < 8) flies.push({ x: s.x, y: s.y - 40, ph: Math.random() * 6, col: HEX[s.key], cx: s.x });
-    say((firstTime ? NAMES[s.key] + ' çiçek bulundu! ' : NAMES[s.key] + ' çiçek açtı! ') + '+' + fmt(reward) + ' damla' + (combo >= 2 ? ' · kombo ×' + combo : ''));
+    say((s.crit ? 'ALTIN ÇİÇEK! ×10 · ' : '') + (firstTime ? NAMES[s.key] + ' çiçek bulundu! ' : NAMES[s.key] + ' çiçek açtı! ') + '+' + fmt(reward) + ' damla' + (combo >= 2 ? ' · kombo ×' + combo : ''));
     if (seeds.every(function (x) { return x.done; }) && gardenTimer <= 0) {
       gardenTimer = 2.4; st.stats.tiers++; weeklyAdd('tier', 1);
       st.wlv[st.world] = wlvl(st.world) + 1;
@@ -1202,6 +1214,7 @@ canvas {
       if (st.world === 'space') { ctx.save(); ctx.globalAlpha = 0.35; ctx.lineWidth = 9; ctx.stroke(); ctx.restore(); }
       ctx.beginPath(); ctx.ellipse(s.x - 9, s.y - 6, 9, 4, -0.5, 0, Math.PI * 2); ctx.fill();
       var cx = s.x + sway, R = 17 * b;
+      if (s.crit) { ctx.save(); ctx.fillStyle = 'rgba(255,214,64,' + (0.28 + 0.12 * Math.sin(tAll * 6)) + ')'; circle(cx, top, R * 1.9); ctx.strokeStyle = '#ffd23f'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(cx, top, R * 1.35, 0, Math.PI * 2); ctx.stroke(); ctx.restore(); }
       bloomShape(cx, top, R, HEX[s.key]);
       ctx.fillStyle = '#7a4a00'; circle(cx - R * 0.22, top - R * 0.08, R * 0.08 + 0.4); circle(cx + R * 0.22, top - R * 0.08, R * 0.08 + 0.4);
       ctx.strokeStyle = '#7a4a00'; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.arc(cx, top + R * 0.08, R * 0.24, 0.2, Math.PI - 0.2); ctx.stroke();
@@ -1564,14 +1577,31 @@ canvas {
 
 
   /* ---------- meta: prestij, çevrimdışı kazanç, arı, etkinlik, hedefler, albüm ---------- */
-  function prestigeMult() { return 1 + 0.25 * st.prestige.gp; }
+  function treeLv(id) { return st.tree[id] || 0; }
+  function treeCost(n) { return n.c0 + n.cs * treeLv(n.id); }
+  function gpFree() { var sp = 0; TREE.forEach(function (n) { for (var i = 0; i < treeLv(n.id); i++) sp += n.c0 + n.cs * i; }); return st.prestige.gp - sp; }
+  function critP() { return 0.05 + 0.02 * treeLv('crit'); }
+  function buildTree() {
+    var h = '', fr = gpFree();
+    TREE.forEach(function (n) {
+      var lv = treeLv(n.id), c = treeCost(n), can = lv < n.max && fr >= c;
+      h += '<div class="row' + (can ? ' ready' : '') + '"><div class="row-t"><b>' + n.name + '</b><span>' + n.desc + '</span><span>Sv. ' + lv + ' / ' + n.max + '</span></div><button class="buy" data-tr="' + n.id + '"' + (can ? '' : ' disabled') + '>' + (lv >= n.max ? 'En üst' : c + ' güç') + '</button></div>';
+    });
+    $('treeBox').innerHTML = '<div class="mgr-h">Gökkuşağı ağacı · harcanabilir güç: ' + fr + '</div>' + h;
+  }
+  $('treeBox').addEventListener('click', function (e) {
+    var b = e.target.closest('button[data-tr]'); if (!b || b.disabled) return;
+    var n = TREE.filter(function (x) { return x.id === b.getAttribute('data-tr'); })[0]; if (!n || treeLv(n.id) >= n.max || gpFree() < treeCost(n)) return;
+    st.tree[n.id] = treeLv(n.id) + 1; buySound(); say(n.name + ' seviye ' + st.tree[n.id] + ' oldu!'); updateUI(); save();
+  });
+  function prestigeMult() { return (1 + 0.25 * st.prestige.gp) * (1 + 0.1 * treeLv('inc')); }
   function prestigeGain() { return st.garden >= 10 ? Math.floor((st.garden - 7) / 3) : 0; }
   var prestigeArmed = false, prestigeTimer = null;
   function doPrestige() {
     var gain = prestigeGain(); if (gain < 1) return;
     st.prestige.gp += gain; st.prestige.count++;
     st.garden = 1; st.found = {}; UPKEYS.forEach(function (k) { st.up[k] = 0; }); st.mgr = { p: 0, b: 0, y: 0 };
-    st.gold = 10 * CK * st.prestige.gp; st.buffs = { reward: 0, drain: 0 };
+    st.gold = (10 + 50 * treeLv('start')) * CK * st.prestige.gp; st.buffs = { reward: 0, drain: 0 };
     st.quests = []; while (st.quests.length < 3) st.quests.push(newQuest());
     clouds.length = 0; clouds.push(mkCloud(80, 120, 'p', 10), mkCloud(190, 190, 'b', -9), mkCloud(280, 130, 'y', 8));
     drops.length = 0; parts.length = 0; flies.length = 0; stars.length = 0; floats.length = 0;
@@ -1592,7 +1622,7 @@ canvas {
   });
 
   var welcomeOpen = false, welcomeAmt = 0;
-  function offlineCap() { return (2 + st.up.vault) * 3600; }
+  function offlineCap() { return (2 + st.up.vault + treeLv('vault')) * 3600; }
   function offlineRate() { return 0.5 * CK * (1 + Math.floor((st.garden - 1) / 4)) * tg() * msF(st.garden) * wmF(st.world) * dreamF() * luckF() * prestigeMult() * D().reward; }
   function checkOffline() {
     if (welcomeOpen || !st.lastSeen) return;
@@ -1839,7 +1869,7 @@ canvas {
   /* ---------- bulut yöneticileri ---------- */
   var MGR = { p: { base: 100 }, b: { base: 300 }, y: { base: 800 } }, MGRMAX = 8, mgrS = {};
   function mgrCost(k) { return Math.round(MGR[k].base * CK * Math.pow(1.8, st.mgr[k])); }
-  function mgrEvery(k) { return Math.max(2.2, 9 - 0.9 * (st.mgr[k] - 1)); }
+  function mgrEvery(k) { return Math.max(1.6, (9 - 0.9 * (st.mgr[k] - 1)) * (1 - 0.08 * treeLv('mgr'))); }
   function mgrAmt(k) { return 0.22 + 0.03 * st.mgr[k]; }
   function updateMgr(dt) {
     ['p', 'b', 'y'].forEach(function (k) {
@@ -1923,6 +1953,90 @@ canvas {
     } catch (err) { try { c2.restore(); } catch (e2) {} }
     ctx = main; st.world = sw; ev = sev;
   }
+
+  /* ---------- dil desteği: Türkçe kaynak metin, İngilizce ve Almanca çeviri ---------- */
+  var I18N_ROWS = [["Bulut Çobanı", "Cloud Shepherd", "Wolkenhirte"], ["Bahçıvan kartı", "Gardener card", "Gärtnerkarte"], ["Bulut yöneticileri", "Cloud managers", "Wolken-Manager"], ["Bulut yüzü", "Cloud face", "Wolkengesicht"], ["Damlalarınla bulutlarına kostüm al, güçlendirici kullan.", "Spend drops on cloud costumes and boosters.", "Kaufe Kostüme für deine Wolken und nutze Booster."], ["Günlük hediyeni al, görevleri bitir. Biten görevin yerine yenisi gelir.", "Claim your daily gift and finish quests. A new one replaces each finished quest.", "Hol dir dein Tagesgeschenk und erfülle Aufgaben. Für jede erledigte Aufgabe kommt eine neue."], ["Her evren, bir öncekinde yeterince kademe bitirince açılır. Sonra damlayla satın alırsın. Haritadan bir evrene dokun, önizlemesini gör.", "Each world opens once you finish enough tiers in the previous one. Then you buy it with drops. Tap a world on the map to preview it.", "Jede Welt öffnet sich, wenn du in der vorherigen genug Stufen geschafft hast. Dann kaufst du sie mit Tropfen. Tippe auf der Karte auf eine Welt für die Vorschau."], ["Çiçek aç, kombo yap, görev bitir. Gelir yükseltmelerinin sınırı yok; 10, 25, 50, 100. seviyede kazancın ikiye katlanır.", "Open flowers, build combos, finish quests. Income upgrades have no limit; your earnings double at levels 10, 25, 50 and 100.", "Öffne Blumen, baue Kombos, erledige Aufgaben. Einkommens-Upgrades haben kein Limit; auf Stufe 10, 25, 50 und 100 verdoppelt sich dein Einkommen."], ["Yeni gökyüzleri damlayla açılır. Yalnızca Gökyüzü evreninde görünür.", "New skies unlock with drops. Only visible in the Sky world.", "Neue Himmel werden mit Tropfen freigeschaltet. Nur in der Himmelswelt sichtbar."], ["Test modu: evrenler bedava ve kilitsiz", "Test mode: worlds are free and unlocked", "Testmodus: Welten sind kostenlos und offen"], ["Tüm ilerlemeyi sıfırla", "Reset all progress", "Gesamten Fortschritt zurücksetzen"], ["Emin misin? Tekrar dokun", "Are you sure? Tap again", "Sicher? Nochmal tippen"], ["Her şey sıfırlandı. Yeni bir bahçe başlıyor!", "Everything was reset. A new garden begins!", "Alles wurde zurückgesetzt. Ein neuer Garten beginnt!"], ["Hoş geldin!", "Welcome back!", "Willkommen zurück!"], ["Kostüm giydirilecek bulut", "Cloud to dress up", "Wolke zum Einkleiden"], ["Haftalık hedefler", "Weekly goals", "Wochenziele"], ["Çiçek albümü", "Flower album", "Blumenalbum"], ["Güçlendiriciler", "Boosters", "Booster"], ["Kostümler", "Costumes", "Kostüme"], ["Rozetler", "Badges", "Abzeichen"], ["Ses seviyesi", "Volume", "Lautstärke"], ["Hareketi azalt", "Reduce motion", "Bewegung reduzieren"], ["Zorluk", "Difficulty", "Schwierigkeit"], ["Koleksiyon", "Collection", "Sammlung"], ["Yükseltmeler", "Upgrades", "Upgrades"], ["Yükselt", "Upgrade", "Upgrade"], ["Mağaza", "Shop", "Shop"], ["Görevler", "Quests", "Aufgaben"], ["Evrenler", "Worlds", "Welten"], ["Ayarlar", "Settings", "Einstellungen"], ["Gündüz", "Day", "Tag"], ["Gün batımı", "Sunset", "Sonnenuntergang"], ["Gece", "Night", "Nacht"], ["Gökyüzü", "Sky", "Himmel"], ["Göster", "Show", "Zeigen"], ["Topla", "Collect", "Einsammeln"], ["Gülen", "Smile", "Lächeln"], ["Havalı", "Cool", "Cool"], ["Uykulu", "Sleepy", "Verschlafen"], ["Rahat", "Easy", "Leicht"], ["Zor", "Hard", "Schwer"], ["Maks", "Max", "Max"], ["Damla ", "Drops ", "Tropfen "], ["Kademe", "Tier", "Stufe"], ["Ay Evreni", "Moon World", "Mondwelt"], ["Buz Krallığı", "Ice Kingdom", "Eisreich"], ["Şeker Diyarı", "Candy Land", "Zuckerland"], ["Uzay", "Space", "Weltraum"], ["Bulutların evi", "Home of the clouds", "Heimat der Wolken"], ["Düşük yerçekimi", "Low gravity", "Geringe Schwerkraft"], ["Donmuş toprak", "Frozen ground", "Gefrorener Boden"], ["Tatlı bereket", "Sweet bounty", "Süßer Segen"], ["Kozmik enerji", "Cosmic energy", "Kosmische Energie"], ["Her şeyin başladığı yer. Gündüz, gün batımı ve gece gökyüzü.", "Where it all began. Day, sunset and night skies.", "Hier hat alles begonnen. Himmel bei Tag, Sonnenuntergang und Nacht."], ["Kraterler arasında, uzaktaki Dünya'nın ışığında çiçek yetiştir.", "Grow flowers among craters, in the light of distant Earth.", "Ziehe Blumen zwischen Kratern im Licht der fernen Erde."], ["Kar yağan, kutup ışıklarıyla aydınlanan sessiz bir diyar.", "A quiet land of falling snow, lit by polar lights.", "Ein stilles Land mit Schnee und Polarlichtern."], ["Pamuk bulutlar, lolipop güneş ve şerbet nehirleri.", "Cotton clouds, a lollipop sun and sherbet rivers.", "Zuckerwatte-Wolken, eine Lutscher-Sonne und Sorbet-Flüsse."], ["Halkalı gezegenler, bulutsular ve parlayan kristaller.", "Ringed planets, nebulae and glowing crystals.", "Ringplaneten, Nebel und leuchtende Kristalle."], ["Özel güç yok, dengeli oyun.", "No special power, balanced play.", "Keine Spezialkraft, ausgewogenes Spiel."], ["Bulutlar %15 daha az su harcar, rüzgar yarı güçte.", "Clouds use 15% less water, wind is half as strong.", "Wolken verbrauchen 15 % weniger Wasser, der Wind ist halb so stark."], ["Çiçekler hiç solmaz, ama su %10 daha yavaş dolar.", "Flowers never wilt, but water fills 10% slower.", "Blumen welken nie, aber Wasser füllt sich 10 % langsamer."], ["Damla ödülleri %25 artar, su %10 daha yavaş dolar.", "Drop rewards +25%, water fills 10% slower.", "Tropfen-Belohnungen +25 %, Wasser füllt sich 10 % langsamer."], ["Damla ödülleri %50 artar, bulutlar %20 daha çabuk susar. Rüzgar yok.", "Drop rewards +50%, clouds run dry 20% faster. No wind.", "Tropfen-Belohnungen +50 %, Wolken versiegen 20 % schneller. Kein Wind."], ["yıldız suyu gölüne", "the starwater lake", "den Sternwassersee"], ["buz gölüne", "the ice lake", "den Eissee"], ["şerbet nehrine", "the sherbet river", "den Sorbetfluss"], ["plazma havuzuna", "the plasma pool", "den Plasmapool"], ["denize", "the sea", "das Meer"], ["Evren seviyesi: ", "World level: ", "Weltstufe: "], ["Evren seviyesi ", "World level ", "Weltstufe "], [" · bonus ×", " · bonus ×", " · Bonus ×"], [" · en üst", " · max", " · max"], ["Bu evrende bitirilen kademe: ", "Tiers finished in this world: ", "In dieser Welt abgeschlossene Stufen: "], ["Aç · ", "Open · ", "Öffnen · "], ["Git", "Go", "Hin"], ["Seçili", "Selected", "Gewählt"], ["Kilitli", "Locked", "Gesperrt"], ["Satın al", "Buy", "Kaufen"], ["Açılabilir", "Can unlock", "Freischaltbar"], ["Açık", "Owned", "Offen"], ["Yeni evren açılabilir!", "New world available!", "Neue Welt verfügbar!"], ["Yeni evren kilidi açıldı!", "New world unlocked!", "Neue Welt freigeschaltet!"], [" artık satın alınabilir.", " can now be bought.", " kann jetzt gekauft werden."], [" için yeterli damlan var", " – you have enough drops", " – du hast genug Tropfen"], ["Fiyat: ", "Price: ", "Preis: "], ["Yağmur gücü", "Rain power", "Regenkraft"], ["Her damla çiçeği daha çok sular.", "Each drop waters the flower more.", "Jeder Tropfen gießt die Blume stärker."], ["Büyük bulut", "Big cloud", "Große Wolke"], ["Bulutun suyu daha geç biter.", "The cloud runs out of water later.", "Das Wasser der Wolke geht später aus."], ["Hızlı dolum", "Fast refill", "Schnelles Auffüllen"], ["Denizde bulut çabuk dolar.", "Clouds refill quickly in the sea.", "Wolken füllen sich im Meer schnell auf."], ["Geniş yağmur", "Wide rain", "Breiter Regen"], ["Yağmur daha geniş alana düşer.", "Rain falls over a wider area.", "Der Regen fällt auf eine größere Fläche."], ["Bulut uykusu", "Cloud nap", "Wolkenschlaf"], ["Gökte boşta duran bulutlar yavaşça dolar.", "Idle clouds in the sky slowly refill.", "Untätige Wolken am Himmel füllen sich langsam."], ["Altın dokunuş", "Golden touch", "Goldene Berührung"], ["Çiçekler ve görevler daha çok damla verir. Sınırsız!", "Flowers and quests give more drops. Unlimited!", "Blumen und Aufgaben geben mehr Tropfen. Unbegrenzt!"], ["Hızlı yetenek", "Quick skills", "Schnelle Fähigkeiten"], ["Yetenekler daha çabuk hazır olur.", "Skills recharge faster.", "Fähigkeiten laden schneller auf."], ["Çalışkan arı", "Busy bee", "Fleißige Biene"], ["Bir arı susayan çiçekleri senin yerine sular.", "A bee waters thirsty flowers for you.", "Eine Biene gießt durstige Blumen für dich."], ["Rüya bulutu", "Dream cloud", "Traumwolke"], ["Sen yokken dakikada daha çok damla biriktirir. Sınırsız!", "Collects more drops per minute while you are away. Unlimited!", "Sammelt mehr Tropfen pro Minute, während du weg bist. Unbegrenzt!"], ["Uyku kasası", "Sleep vault", "Schlaftresor"], ["Çevrimdışı birikim süresini uzatır: her seviye +1 saat.", "Extends offline saving time: +1 hour per level.", "Verlängert die Offline-Sparzeit: +1 Stunde pro Stufe."], ["Ödül ×", "Reward ×", "Belohnung ×"], ["Çevrimdışı ×", "Offline ×", "Offline ×"], ["Kasa ", "Vault ", "Tresor "], [" · ×2 bonusu: sv. ", " · ×2 bonus: lv. ", " · ×2-Bonus: St. "], [" · ×1,5 daha: sv. ", " · ×1.5 more: lv. ", " · ×1,5 mehr: St. "], ["Sv. ", "Lv. ", "St. "], ["sv. ", "lv. ", "St. "], ["En üst", "Maxed", "Maximal"], ["Geliştir", "Upgrade", "Verbessern"], ["İşe al · ", "Hire · ", "Anheuern · "], ["Geliştir · ", "Upgrade · ", "Verbessern · "], [" bulut yöneticisi", " cloud manager", " Wolken-Manager"], ["Kilometre taşı: ×2!", "Milestone: ×2!", "Meilenstein: ×2!"], ["Yükseltme hazır!", "Upgrade ready!", "Upgrade bereit!"], [" yükseltme hazır", " upgrades ready", " Upgrades bereit"], ["Alındı", "Claimed", "Erhalten"], ["Devam", "In progress", "Weiter"], ["Tamam", "Done", "Fertig"], ["Gökkuşağı Yenileme", "Rainbow Renewal", "Regenbogen-Erneuerung"], ["Her şeyi sıfırla, kalıcı Gökkuşağı gücü kazan. Her güç tüm ödülleri %25 artırır. Kostüm, evren, rozet ve albüm kalır.", "Reset everything and gain permanent Rainbow power. Each power raises all rewards by 25%. Costumes, worlds, badges and album stay.", "Setze alles zurück und erhalte dauerhafte Regenbogenkraft. Jede Kraft erhöht alle Belohnungen um 25 %. Kostüme, Welten, Abzeichen und Album bleiben."], ["Şu an: ", "Now: ", "Aktuell: "], [" güç (ödüller ×", " power (rewards ×", " Kraft (Belohnungen ×"], [" · şimdi yenilersen +", " · renew now for +", " · jetzt erneuern: +"], ["Yenile", "Renew", "Erneuern"], ["Emin misin?", "Are you sure?", "Sicher?"], ["Gökkuşağı ağacı · harcanabilir güç: ", "Rainbow tree · spendable power: ", "Regenbogenbaum · verfügbare Kraft: "], ["Gökkuşağı bereketi", "Rainbow bounty", "Regenbogen-Segen"], ["Bütün kazançlar her seviyede %10 artar.", "All earnings +10% per level.", "Alle Einnahmen +10 % pro Stufe."], ["Altın çiçek şansı", "Golden flower chance", "Goldblumen-Chance"], ["Altın çiçek (10 kat damla) şansı her seviyede +%2.", "Golden flower (10× drops) chance +2% per level.", "Chance auf Goldblume (10× Tropfen) +2 % pro Stufe."], ["Çevik yöneticiler", "Nimble managers", "Flinke Manager"], ["Yöneticiler her seviyede %8 daha sık su verir.", "Managers water 8% more often per level.", "Manager gießen pro Stufe 8 % öfter."], ["Derin uyku", "Deep sleep", "Tiefschlaf"], ["Çevrimdışı birikim süresi her seviyede +1 saat.", "Offline saving time +1 hour per level.", "Offline-Sparzeit +1 Stunde pro Stufe."], ["Zengin başlangıç", "Rich start", "Reicher Start"], ["Yenilemeden sonra daha çok damlayla başlarsın.", "Start with more drops after a renewal.", "Nach einer Erneuerung startest du mit mehr Tropfen."], [" güç", " power", " Kraft"], ["Gökkuşağı! Bütün renkleri buldun! +", "Rainbow! You found every color! +", "Regenbogen! Du hast alle Farben gefunden! +"], ["Gökkuşağı Yenileme! +", "Rainbow Renewal! +", "Regenbogen-Erneuerung! +"], [" güç: bütün ödüller artık ×", " power: all rewards are now ×", " Kraft: alle Belohnungen jetzt ×"], ["Güç ×", "Power ×", "Kraft ×"], ["Kademe 10'da açılır (şu an ", "unlocks at tier 10 (now ", "wird auf Stufe 10 frei (aktuell "], ["Günlük hediye hazır!", "Daily gift ready!", "Tagesgeschenk bereit!"], ["Görevler sekmesinden ödülünü al.", "Claim your reward in the Quests tab.", "Hol dir deine Belohnung im Aufgaben-Tab."], ["Günlük hediyen hazır! Görevler sekmesinden al.", "Your daily gift is ready! Claim it in the Quests tab.", "Dein Tagesgeschenk ist bereit! Hol es dir im Aufgaben-Tab."], ["Günlük hediye: +", "Daily gift: +", "Tagesgeschenk: +"], ["Günlük hediye", "Daily gift", "Tagesgeschenk"], ["Bugünkü ödül ", "Today's reward ", "Heutige Belohnung "], [" damla · seri ", " drops · streak ", " Tropfen · Serie "], [" · büyük ödül günü!", " · big reward day!", " · Tag der großen Belohnung!"], [" · her 7. gün büyük ödül", " · big reward every 7th day", " · jeden 7. Tag große Belohnung"], ["Kahraman pelerini kazandın!", "You won the Hero cape!", "Du hast den Heldenumhang gewonnen!"], ["Görev tamam! +", "Quest done! +", "Aufgabe erledigt! +"], ["Bir kademeyi bitir", "Finish a tier", "Beende eine Stufe"], ["Haftalık hedef tamam! +", "Weekly goal done! +", "Wochenziel erreicht! +"], ["Bu hafta 120 çiçek aç", "Open 120 flowers this week", "Öffne diese Woche 120 Blumen"], ["Bu hafta 10 kademe bitir", "Finish 10 tiers this week", "Schließe diese Woche 10 Stufen ab"], ["Bu hafta 25 yıldız yakala", "Catch 25 stars this week", "Fange diese Woche 25 Sterne"], ["Bu hafta bulutları 60 kez doldur", "Refill the clouds 60 times this week", "Fülle die Wolken diese Woche 60 Mal auf"], ["Albüm tamamlandı!", "Album complete!", "Album vollständig!"], ["Sonraki hedef: ", "Next goal: ", "Nächstes Ziel: "], [" çiçek · ", " flower · ", " Blume · "], [" albümü: +", " album: +", " Album: +"], ["Etkinlik ödülü: +", "Event reward: +", "Event-Belohnung: +"], [" puan · ", " pts · ", " Pkt. · "], ["Hafta sonu", "Weekend", "Wochenende"], [" Bütün ödüller +%25. Çiçek açtıkça puan toplarsın.", " All rewards +25%. You earn points as flowers bloom.", " Alle Belohnungen +25 %. Du sammelst Punkte, wenn Blumen blühen."], ["Kalan: ", "Left: ", "Übrig: "], [" · Puan: ", " · Points: ", " · Punkte: "], ["Sıradaki etkinlik: ", "Next event: ", "Nächstes Event: "], ["Ödül kostümü: ", "Reward costume: ", "Belohnungskostüm: "], [" kostümü kazandın! Mağazadan giydir.", " costume won! Put it on in the Shop.", " Kostüm gewonnen! Zieh es im Shop an."], ["Şeker Fırtınası", "Candy Storm", "Zuckersturm"], ["Yıldız Gecesi", "Star Night", "Sternennacht"], ["Çiçek Festivali", "Flower Festival", "Blumenfest"], ["Kar Şenliği", "Snow Fest", "Schneefest"], ["Her çiçek şeker gibi tatlı.", "Every flower is sweet as candy.", "Jede Blume ist süß wie Zucker."], ["Gökyüzü yıldızlarla doluyor.", "The sky fills with stars.", "Der Himmel füllt sich mit Sternen."], ["Bahar bayram yerine dönüyor.", "Spring turns into a celebration.", "Der Frühling wird zum Fest."], ["Her yer bembeyaz.", "Everything is snow white.", "Alles ist schneeweiß."], [" etkinliğinde kazan.", " event.", " Event gewinnen."], ["7 gün üst üste günlük hediye al.", "Claim the daily gift 7 days in a row.", "Hol das Tagesgeschenk 7 Tage in Folge ab."], ["Dondurma şapkası", "Ice cream hat", "Eishut"], ["Yıldız halesi", "Star halo", "Sternenhalo"], ["Kelebek kanatları", "Butterfly wings", "Schmetterlingsflügel"], ["Kar tanesi tacı", "Snowflake crown", "Schneeflockenkrone"], ["Kahraman pelerini", "Hero cape", "Heldenumhang"], ["Üç top dondurma.", "Three scoops of ice cream.", "Drei Kugeln Eis."], ["Başının üstünde yıldızlar dönüyor.", "Stars spin above your head.", "Sterne kreisen über deinem Kopf."], ["Renkli kanatlarla süzül.", "Glide on colorful wings.", "Gleite auf bunten Flügeln."], ["Üç minik kar tanesi.", "Three tiny snowflakes.", "Drei winzige Schneeflocken."], ["Bulutların kahramanı.", "Hero of the clouds.", "Held der Wolken."], ["Kurdele", "Ribbon", "Schleife"], ["Tatlı bir fiyonk.", "A sweet bow.", "Eine süße Schleife."], ["Parti şapkası", "Party hat", "Partyhut"], ["Her gün doğum günü.", "Birthday every day.", "Jeden Tag Geburtstag."], ["Çiçek tacı", "Flower crown", "Blumenkranz"], ["Bahar her yerde.", "Spring is everywhere.", "Überall Frühling."], ["Silindir şapka", "Top hat", "Zylinder"], ["Çok kibar görünüyor.", "Looks very polite.", "Sieht sehr vornehm aus."], ["Yuvarlak gözlük", "Round glasses", "Runde Brille"], ["Bilgin bir bulut.", "A wise cloud.", "Eine weise Wolke."], ["Kırmızı bere", "Red beanie", "Rote Mütze"], ["Kış için sıcacık.", "Cozy for winter.", "Kuschelig für den Winter."], ["Kulaklık", "Headphones", "Kopfhörer"], ["Yağmur şarkısı dinliyor.", "Listening to the rain song.", "Hört das Regenlied."], ["Kedi kulakları", "Cat ears", "Katzenohren"], ["Miyav yağmuru!", "Meow rain!", "Miau-Regen!"], ["Büyücü şapkası", "Wizard hat", "Zauberhut"], ["Yıldızlı ve gizemli.", "Starry and mysterious.", "Sternenreich und geheimnisvoll."], ["Astronot kaskı", "Astronaut helmet", "Astronautenhelm"], ["Uzaya hazır.", "Ready for space.", "Bereit für den Weltraum."], ["Kral tacı", "King's crown", "Königskrone"], ["Bulutların kralı.", "King of the clouds.", "König der Wolken."], ["Bereket tılsımı", "Bounty charm", "Segenstalisman"], ["90 saniye boyunca damla ödülleri ×1,5.", "Drop rewards ×1.5 for 90 seconds.", "90 Sekunden lang Tropfen-Belohnungen ×1,5."], ["Su iksiri", "Water potion", "Wassertrank"], ["90 saniye boyunca bulutlar yarı hızda su harcar.", "Clouds use water at half speed for 90 seconds.", "90 Sekunden lang verbrauchen Wolken nur halb so viel Wasser."], ["Çiçek tozu", "Flower dust", "Blumenstaub"], ["Bütün tohumlara anında %50 su verir.", "Instantly gives 50% water to all seeds.", "Gibt allen Samen sofort 50 % Wasser."], ["Çiçek tozu serpildi!", "Flower dust sprinkled!", "Blumenstaub gestreut!"], [" etkinleşti: 90 saniye!", " active: 90 seconds!", " aktiv: 90 Sekunden!"], [" alındı ve giydirildi!", " bought and worn!", " gekauft und angezogen!"], ["Çıkar", "Take off", "Ablegen"], ["Giy", "Wear", "Anziehen"], [" · Tılsım ×1,5 · ", " · Charm ×1.5 · ", " · Talisman ×1,5 · "], ["Tılsım ×1,5 · ", "Charm ×1.5 · ", "Talisman ×1,5 · "], ["Su iksiri · ", "Water potion · ", "Wassertrank · "], ["Bu gökyüzü için ", " You need ", " Für diesen Himmel brauchst du "], [" damla lazım.", " drops for this sky.", " Tropfen."], [" gökyüzü açıldı!", " sky unlocked!", " Himmel freigeschaltet!"], ["Güneş dalgası", "Sun wave", "Sonnenwelle"], ["Bulut sürüsü", "Cloud herd", "Wolkenherde"], ["Dinginlik", "Calm", "Ruhe"], ["Güneş dalgası! Tohumlar ısındı.", "Sun wave! The seeds warmed up.", "Sonnenwelle! Die Samen sind aufgewärmt."], ["Bulut sürüsü yenilendi!", "Cloud herd refreshed!", "Wolkenherde aufgefrischt!"], ["Dinginlik: 20 saniye rüzgar yok, bulutlar yarı hızda su harcıyor.", "Calm: 20 seconds without wind, clouds use water at half speed.", "Ruhe: 20 Sekunden kein Wind, Wolken verbrauchen halb so viel Wasser."], ["Su verilecek tohum kalmadı.", "No seeds left to water.", "Keine Samen mehr zu gießen."], ["Sıcak hava dalgası", "Heat wave", "Hitzewelle"], ["Bulutların suyu iki kat hızlı buharlaşıyor.", "Cloud water evaporates twice as fast.", "Das Wasser der Wolken verdunstet doppelt so schnell."], ["Kuraklık", "Drought", "Dürre"], ["Sulanmayan çiçekler üç kat hızlı solar.", "Unwatered flowers wilt three times faster.", "Ungegossene Blumen welken dreimal schneller."], ["Sert rüzgar", "Strong wind", "Starker Wind"], ["Yağmur çok savruluyor.", "The rain is blown around a lot.", "Der Regen wird stark verweht."], ["Bereket yağmuru", "Bounty rain", "Segensregen"], ["Çiçek ödülleri iki kat!", "Flower rewards doubled!", "Blumen-Belohnungen verdoppelt!"], ["Yıldız yağmuru", "Star shower", "Sternschnuppenregen"], ["Düşen yıldızlara dokun ya da bulutla yakala!", "Tap the falling stars or catch them with a cloud!", "Tippe auf die fallenden Sterne oder fange sie mit einer Wolke!"], ["Altın yıldız geçiyor! Dokun ya da bir bulutla yakala.", "A golden star is passing! Tap it or catch it with a cloud.", "Ein goldener Stern fliegt vorbei! Tippe darauf oder fange ihn mit einer Wolke."], ["Büyük bahçe: ödüller üç kat!", "Big garden: rewards tripled!", "Großer Garten: dreifache Belohnungen!"], ["Dinlenme bahçesi: biraz daha rahat", "Rest garden: a bit easier", "Ruhegarten: etwas leichter"], ["Susayan çiçekleri bul", "Find the thirsty flowers", "Finde die durstigen Blumen"], ["İki renkli çiçekler ve olaylar başlıyor", "Two-color flowers and events begin", "Zweifarbige Blumen und Ereignisse beginnen"], ["Rüzgar çıktı, yağmur savruluyor", "The wind picked up, rain gets blown", "Wind kommt auf, der Regen wird verweht"], ["Beş tohum birden", "Five seeds at once", "Fünf Samen auf einmal"], ["Altı tohum birden", "Six seeds at once", "Sechs Samen auf einmal"], ["Çiçekler daha çok su istiyor", "Flowers want more water", "Blumen wollen mehr Wasser"], ["Bir bulutu sürükle ve susayan çiçeklere yağmur yağdır. Su bitince bulutu ", "Drag a cloud and rain on the thirsty flowers. When the water runs out, take the cloud to ", "Ziehe eine Wolke und lass es auf durstige Blumen regnen. Wenn das Wasser leer ist, bring die Wolke zu "], ["Bulut susadı. Onu ", "The cloud is thirsty. Take it to ", "Die Wolke ist durstig. Bring sie zu "], ["Rüzgar durdu", "Wind stopped", "Wind hat aufgehört"], ["Rüzgar", "Wind", "Wind"], ["Kombo ×", "Combo ×", "Kombo ×"], [" · Büyük", " · Big", " · Groß"], ["İlk çiçek", "First flower", "Erste Blume"], ["İlk çiçeğini aç.", "Open your first flower.", "Öffne deine erste Blume."], ["Bahçıvan", "Gardener", "Gärtner"], ["50 çiçek aç.", "Open 50 flowers.", "Öffne 50 Blumen."], ["Çiçek ordusu", "Flower army", "Blumenarmee"], ["200 çiçek aç.", "Open 200 flowers.", "Öffne 200 Blumen."], ["Beşinci kademeye ulaş.", "Reach tier 5.", "Erreiche Stufe 5."], ["Onuncu kademeye ulaş.", "Reach tier 10.", "Erreiche Stufe 10."], ["Yirminci kademeye ulaş.", "Reach tier 20.", "Erreiche Stufe 20."], ["Gökkuşağı avcısı", "Rainbow hunter", "Regenbogenjäger"], ["İlk gökkuşağını çıkar.", "Make your first rainbow.", "Erzeuge deinen ersten Regenbogen."], ["Renk ustası", "Color master", "Farbmeister"], ["3 gökkuşağı çıkar.", "Make 3 rainbows.", "Erzeuge 3 Regenbogen."], ["Tam güç", "Full power", "Volle Kraft"], ["Bir yükseltmeyi en üst seviyeye çıkar.", "Max out one upgrade.", "Bringe ein Upgrade auf die höchste Stufe."], ["Su taşıyıcı", "Water carrier", "Wasserträger"], ["Bulutları denizde 30 kez doldur.", "Refill the clouds in the sea 30 times.", "Fülle die Wolken 30 Mal im Meer auf."], ["Birikimci", "Saver", "Sparer"], ["Toplam 50 K damla kazan.", "Earn 50 K drops in total.", "Verdiene insgesamt 50 K Tropfen."], ["Gezgin", "Traveler", "Reisender"], ["İlk yeni evreni aç.", "Unlock your first new world.", "Schalte deine erste neue Welt frei."], ["Evren kaşifi", "World explorer", "Welten-Entdecker"], ["Bütün evrenleri aç.", "Unlock every world.", "Schalte alle Welten frei."], ["Stil sahibi", "Stylish", "Stilvoll"], ["5 kostüm satın al.", "Buy 5 costumes.", "Kaufe 5 Kostüme."], ["Yıldız avcısı", "Star hunter", "Sternenjäger"], ["20 yıldız yakala.", "Catch 20 stars.", "Fange 20 Sterne."], ["Yeniden doğuş", "Rebirth", "Wiedergeburt"], ["İlk Gökkuşağı Yenileme.", "Your first Rainbow Renewal.", "Deine erste Regenbogen-Erneuerung."], ["Gökkuşağı ustası", "Rainbow master", "Regenbogenmeister"], ["5 Gökkuşağı gücü topla.", "Collect 5 Rainbow power.", "Sammle 5 Regenbogenkraft."], ["Zincir ustası", "Chain master", "Kettenmeister"], ["Kombo ×5 yap.", "Reach combo ×5.", "Erreiche Kombo ×5."], ["Rozet kazandın: ", "Badge earned: ", "Abzeichen erhalten: "], [" damla</span>", " drops</span>", " Tropfen</span>"], [" damla", " drops", " Tropfen"], ["Gökkuşağı gücü", "Rainbow power", "Regenbogenkraft"], ["Açan çiçek", "Flowers opened", "Geöffnete Blumen"], ["En yüksek kademe", "Highest tier", "Höchste Stufe"], ["Gökkuşağı", "Rainbow", "Regenbogen"], ["Toplam damla", "Total drops", "Tropfen gesamt"], ["En iyi kombo", "Best combo", "Bester Kombo"], ["Yakalanan yıldız", "Stars caught", "Gefangene Sterne"], ["Oynama süresi", "Play time", "Spielzeit"], ["Sen yokken (", "While you were away (", "Während du weg warst ("], [") bulutların çalıştı ve ", ") your clouds worked and saved ", ") haben deine Wolken gearbeitet und "], [" damla biriktirdi.", " drops.", " Tropfen gesammelt."], [" Uyku kasasını yükseltirsen bu süre uzar.", " Upgrade the Sleep vault to extend this time.", " Verbessere den Schlaftresor, um die Zeit zu verlängern."], ["Kilometre taşı! Bütün kazançlar ×2 oldu", "Milestone! All earnings ×2", "Meilenstein! Alle Einnahmen ×2"], [": bu evrende kazanç ×1,5 daha!", ": earnings ×1.5 more in this world!", ": Einkommen in dieser Welt ×1,5 mehr!"], ["ALTIN ÇİÇEK! ×10 · ", "GOLDEN FLOWER! ×10 · ", "GOLDBLUME! ×10 · "], [" çiçek bulundu! ", " flower found! ", " Blume gefunden! "], [" çiçek açtı! ", " flower bloomed! ", " Blume geblüht! "], [" · kombo ×", " · combo ×", " · Kombo ×"], ["Bonus +", "Bonus +", "Bonus +"], ["işe alındı!", "hired!", "angeheuert!"], ["İşe al", "Hire", "Anheuern"], [" çiçek", " flower", " Blume"], ["Hazır", "Ready", "Bereit"], [" · ödüller +%25", " · rewards +25%", " · Belohnungen +25 %"], ["İlk çiçek · ", "First flower · ", "Erste Blume · "], ["Seri ", "Streak ", "Serie "], [" gün. Yarın tekrar gel, 7. günde büyük ödül var.", " days. Come back tomorrow, a big reward waits on day 7.", " Tage. Komm morgen wieder, an Tag 7 wartet eine große Belohnung."], [" · gökkuşağı ", " · rainbow ", " · Regenbogen "], ["Çiçekler çabuk sulanır, rüzgar ve solma yok. Ödüller ×0,8.", "Flowers fill fast, no wind or wilting. Rewards ×0.8.", "Blumen füllen sich schnell, kein Wind, kein Welken. Belohnungen ×0,8."], ["Dengeli oyun.", "Balanced play.", "Ausgewogenes Spiel."], ["Çiçekler az sulanır ve çabuk solar, bulut çabuk susar. Ödüller ×1,4.", "Flowers fill slowly and wilt fast, clouds run dry quickly. Rewards ×1.4.", "Blumen füllen sich langsam und welken schnell, Wolken versiegen rasch. Belohnungen ×1,4."]];
+  var LANG = 'tr', PH = { en: [], de: [] }, RXA = { en: [], de: [] }, RXB = { en: [], de: [] }, tcache = { en: {}, de: {} }, tcount = 0;
+  (function buildI18n() {
+    ['en', 'de'].forEach(function (l, i) {
+      PH[l] = I18N_ROWS.map(function (r) { return [r[0], r[i + 1]]; }).filter(function (r) { return r[0] !== r[1]; }).sort(function (a, b) { return b[0].length - a[0].length; });
+    });
+    function A(re, en, de) { RXA.en.push([re, en]); RXA.de.push([re, de]); }
+    function B(re, en, de) { RXB.en.push([re, en]); RXB.de.push([re, de]); }
+    A(/^Dil$/, 'Language', 'Sprache');
+    A(/^Al(?= [·×])/, 'Buy', 'Kaufen');
+    A(/^(.+?) seviye (\d+) oldu!/, '$1 reached level $2!', '$1 hat Stufe $2 erreicht!');
+    A(/^(.+?) seviye (\d+): bu evrende kazanç ×1,5 daha!/, '$1 level $2: earnings ×1.5 more in this world!', '$1 Stufe $2: Einkommen in dieser Welt ×1,5 mehr!');
+    A(/Kademe (\d+) tamam! Bonus \+/, 'Tier $1 complete! Bonus +', 'Stufe $1 geschafft! Bonus +');
+    A(/Kademe (\d+) kilometre taşı: bütün kazançlar ×2 \(toplam ×(\d+)\)/, 'Tier $1 milestone: all earnings ×2 (total ×$2)', 'Stufe $1 Meilenstein: alle Einnahmen ×2 (gesamt ×$2)');
+    A(/Kademe (\d+)'de kazanç ×2/, 'Tier $1: earnings ×2', 'Stufe $1: Einkommen ×2');
+    A(/Kademe 10'da açılır \(şu an (\d+)\)/, 'unlocks at tier 10 (now $1)', 'wird auf Stufe 10 frei (aktuell $1)');
+    A(/(.+?) evreninde (\d+) kademe bitir/, 'finish $2 tiers in $1', 'schließe $2 Stufen in $1 ab');
+    A(/Cuma günü başlar, (.+?) sonra\./, 'Starts Friday, in $1.', 'Startet am Freitag, in $1.');
+    A(/En fazla ([\d,]+) saatlik kazanç birikir\./, 'At most $1 hours of earnings are saved.', 'Es werden höchstens $1 Stunden Verdienst gespart.');
+    A(/Bulutları denizde (\d+) kez doldur/, 'Refill the clouds in the sea $1 times', 'Fülle die Wolken $1 Mal im Meer auf');
+    A(/^(\d+) çiçek aç/, 'Open $1 flowers', '$1 Blumen öffnen');
+    A(/^Bir kademeyi bitir/, 'Finish a tier', 'Beende eine Stufe');
+    var C = [['pembe', 'pink', 'rosa', 'Pembe', 'Pink', 'Rosa', 'rosa', 'Rosa'], ['mavi', 'blue', 'blaue', 'Mavi', 'Blue', 'Blau', 'blauen', 'Blaue'], ['sarı', 'yellow', 'gelbe', 'Sarı', 'Yellow', 'Gelb', 'gelben', 'Gelbe'], ['mor', 'purple', 'lila', 'Mor', 'Purple', 'Lila', 'lila', 'Lila'], ['turuncu', 'orange', 'orange', 'Turuncu', 'Orange', 'Orange', 'orange', 'Orange'], ['yeşil', 'green', 'grüne', 'Yeşil', 'Green', 'Grün', 'grünen', 'Grüne']];
+    C.forEach(function (c) {
+      A(new RegExp('^(\\d+) ' + c[0] + ' çiçek aç'), 'Open $1 ' + c[1] + ' flowers', '$1 ' + c[2] + ' Blumen öffnen');
+      A(new RegExp('^İşe al: ' + c[0] + ' çiçekleri senin yerine sular, sen yokken de çalışır\\.'), 'Hire: waters the ' + c[1] + ' flowers for you, even while you are away.', 'Anheuern: gießt die ' + c[6] + ' Blumen für dich, auch wenn du weg bist.');
+      A(new RegExp('^Sv\\. (\\d+) / (\\d+) · her ([\\d,]+) sn\'de ' + c[0] + ' çiçeklere kendiliğinden su verir'), 'Lv. $1 / $2 · waters the ' + c[1] + ' flowers every $3 s', 'St. $1 / $2 · gießt alle $3 s die ' + c[6] + ' Blumen');
+      A(new RegExp('^' + c[3] + '$'), c[4], c[5]);
+      A(new RegExp('\\b' + c[3] + '(?= (bulut yöneticisi|albümü))', 'g'), c[4], c[5]);
+      A(new RegExp('\\b' + c[3] + '(?= çiçek)', 'g'), c[4], c[7]);
+    });
+    B(/(\d+) sa (\d+) dk/g, '$1 h $2 min', '$1 Std. $2 Min.');
+    B(/(\d+) gün (\d+) sa/g, '$1 d $2 h', '$1 T. $2 Std.');
+    B(/(\d+)\. gün/g, 'day $1', 'Tag $1');
+    B(/(\d+) gün/g, '$1 days', '$1 Tage');
+    B(/(\d+) saat/g, '$1 h', '$1 Std.');
+    B(/(\d+) dk/g, '$1 min', '$1 Min.');
+    B(/(\d+) sn/g, '$1 s', '$1 s');
+    RXB.en.push([/(\d),(\d)/g, '$1.$2']);
+  })();
+  function TX(s) {
+    if (LANG === 'tr' || !s) return s;
+    var c = tcache[LANG], o;
+    if ((o = c[s]) !== undefined) return o;
+    o = s;
+    RXA[LANG].forEach(function (r) { o = o.replace(r[0], r[1]); });
+    PH[LANG].forEach(function (r) { if (o.indexOf(r[0]) >= 0) o = o.split(r[0]).join(r[1]); });
+    RXB[LANG].forEach(function (r) { o = o.replace(r[0], r[1]); });
+    o = o.replace(/ +([.!,:])/g, '$1').replace(/  +/g, ' ');
+    if (tcount++ > 4000) { tcache = { en: {}, de: {} }; tcount = 0; }
+    tcache[LANG][s] = o; return o;
+  }
+  var _ft = CanvasRenderingContext2D.prototype.fillText;
+  CanvasRenderingContext2D.prototype.fillText = function (t, x, y, mw) { t = TX(String(t)); return mw === undefined ? _ft.call(this, t, x, y) : _ft.call(this, t, x, y, mw); };
+  function trNode(n) {
+    if (n.__o !== undefined && n.data === n.__o) return;
+    n.__s = n.data; var o = LANG === 'tr' ? n.data : TX(n.data); n.__o = o; if (o !== n.data) n.data = o;
+  }
+  function trTree(root) {
+    if (root.nodeType === 3) { trNode(root); return; }
+    if (root.nodeType !== 1) return;
+    var w = document.createTreeWalker(root, 4, null), n; while ((n = w.nextNode())) trNode(n);
+  }
+  function setLang(l) {
+    LANG = (l === 'en' || l === 'de') ? l : 'tr';
+    document.documentElement.setAttribute('lang', LANG);
+    var w = document.createTreeWalker(document.body, 4, null), n;
+    while ((n = w.nextNode())) {
+      var src = (n.__o !== undefined && n.data === n.__o) ? n.__s : n.data;
+      n.__s = src; var o = LANG === 'tr' ? src : TX(src); n.__o = o; if (n.data !== o) n.data = o;
+    }
+    document.title = TX('Bulut Çobanı');
+  }
+  new MutationObserver(function (muts) {
+    if (LANG === 'tr') return;
+    muts.forEach(function (m) {
+      if (m.type === 'characterData') trNode(m.target);
+      else m.addedNodes.forEach(trTree);
+    });
+  }).observe(document.body, { subtree: true, childList: true, characterData: true });
+
+  setLang(st.set.lang);
 
   /* ---------- başlat ---------- */
   buildUps(); newGarden(); updateUI(); updateAbil();
