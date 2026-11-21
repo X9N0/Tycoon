@@ -132,6 +132,7 @@ canvas {
 .wpv-i b { font-family: var(--font-display); font-size: 17px; }
 .wpv-i span { font-size: 12px; color: var(--muted); }
 .wpv-i .buy { margin-top: auto; }
+.mgr-h { flex: none; font-family: var(--font-display); font-size: 16px; margin-top: 4px; }
 .seg { display: inline-flex; flex-wrap: wrap; border: 2px solid var(--line); border-radius: 12px; overflow: hidden; }
 .seg button { background: transparent; border: 0; padding: 8px 12px; min-height: 44px; color: var(--ink); font: 700 13px var(--font-body); cursor: pointer; }
 .seg button[aria-pressed="true"] { background: var(--pink); color: #fff; }
@@ -196,6 +197,9 @@ canvas {
     <p class="sub">Çiçek aç, kombo yap, görev bitir. Gelir yükseltmelerinin sınırı yok; 10, 25, 50, 100. seviyede kazancın ikiye katlanır.</p>
     <div id="prestigeBox"></div>
     <div class="bulk" id="bulk"><button data-bulk="1">×1</button><button data-bulk="10">×10</button><button data-bulk="100">×100</button><button data-bulk="max">Maks</button></div>
+    <div class="mgr-h">Bulut yöneticileri</div>
+    <div id="mgrBox"></div>
+    <div class="mgr-h">Yükseltmeler</div>
     <div id="ups"></div>
   </section>
 
@@ -281,7 +285,7 @@ canvas {
   function msNext(lv) { for (var i = 0; i < MSTONES.length; i++) if (MSTONES[i] > lv) return MSTONES[i]; return 0; }
   function defaults() {
     return { ver: 3, garden: 1, rainbows: 0, found: {}, gold: 0, up: {}, quests: [], badges: {},
-      daily: { last: '', streak: 0 }, world: 'sky', worlds: { sky: true }, wlv: {}, prestige: { count: 0, gp: 0 }, album: { n: {}, c: {} }, evt: { id: '', pts: 0, claimed: {} }, week: { id: '', goals: [] }, lastSeen: 0, cos: { owned: {}, worn: {} }, buffs: { reward: 0, drain: 0 },
+      daily: { last: '', streak: 0 }, world: 'sky', worlds: { sky: true }, wlv: {}, prestige: { count: 0, gp: 0 }, album: { n: {}, c: {} }, evt: { id: '', pts: 0, claimed: {} }, week: { id: '', goals: [] }, lastSeen: 0, mgr: {}, cos: { owned: {}, worn: {} }, buffs: { reward: 0, drain: 0 },
       stats: { blooms: 0, tiers: 0, refills: 0, sec: 0, maxTier: 1, earned: 0, starsCaught: 0 },
       set: { diff: 'normal', vol: 80, theme: 'day', face: 'smile', motion: null, owned: { day: true } } };
   }
@@ -296,6 +300,7 @@ canvas {
     st.up = st.up || {}; UPKEYS.forEach(function (k) { st.up[k] = st.up[k] || 0; });
     st.quests = st.quests || []; st.badges = st.badges || {};
     st.daily = st.daily || d.daily;
+    st.mgr = st.mgr || {}; ['p', 'b', 'y'].forEach(function (k) { st.mgr[k] = st.mgr[k] || 0; });
     st.wlv = st.wlv || {}; st.cos = st.cos || { owned: {}, worn: {} }; st.cos.owned = st.cos.owned || {}; st.cos.worn = st.cos.worn || {}; st.buffs = st.buffs || { reward: 0, drain: 0 }; st.buffs.reward = st.buffs.reward || 0; st.buffs.drain = st.buffs.drain || 0;
     st.prestige = st.prestige || { count: 0, gp: 0 }; st.prestige.count = st.prestige.count || 0; st.prestige.gp = st.prestige.gp || 0;
     st.album = st.album || { n: {}, c: {} }; st.album.n = st.album.n || {}; st.album.c = st.album.c || {};
@@ -591,10 +596,11 @@ canvas {
   var THEME_COST = { day: 0, dusk: 100 * CK, night: 250 * CK };
   var THEME_NAME = { day: 'Gündüz', dusk: 'Gün batımı', night: 'Gece' };
 
+  var dispGold = st.gold;
   function updateUI() {
     checkBadges();
     $('tierChip').textContent = 'Kademe ' + st.garden + (isBoss() ? ' · Büyük' : '') + (msCount(st.garden) ? ' · ×' + msF(st.garden) : '');
-    var gc = $('goldChip'); gc.textContent = 'Damla ' + fmt(st.gold); gc.classList.toggle('ready', affordable());
+    var gc = $('goldChip'); gc.textContent = 'Damla ' + fmt(dispGold); gc.classList.toggle('ready', affordable());
     $('shelfLabel').textContent = 'Koleksiyon' + (st.rainbows ? ' · gökkuşağı ' + st.rainbows : '');
     var slots = document.querySelectorAll('.slot');
     for (var i = 0; i < slots.length; i++) slots[i].classList.toggle('on', !!st.found[slots[i].getAttribute('data-k')]);
@@ -647,7 +653,7 @@ canvas {
       row.innerHTML = '<div class="row-t"><b>' + w.name + (can ? '<em class="tag">Açılabilir</em>' : '') + '</b><span>' + w.desc + '</span><span><b style="font-weight:700;color:var(--ink)">' + w.tag + ':</b> ' + w.perk + '</span>' + lockHtml + '</div><button class="buy" data-w="' + w.id + '"' + (cur || (!own && !can) ? ' disabled' : '') + '>' + (cur ? 'Seçili' : own ? 'Git' : !unl ? 'Kilitli' : 'Aç · ' + fmt(wcost(w))) + '</button>';
       wl.appendChild(row);
     });
-    buildWorldMap();
+    buildWorldMap(); buildMgr();
     $('tabWorlds').innerHTML = 'Evrenler' + (wReady.length ? '<span class="badge">' + wReady.length + '</span>' : '');
     var curW = {}; wReady.forEach(function (w) { curW[w.id] = true; });
     if (notifiedW !== null) {
@@ -902,7 +908,7 @@ canvas {
     if (calmT > 0) calmT -= dt;
     if (st.buffs.reward > 0) st.buffs.reward = Math.max(0, st.buffs.reward - dt);
     if (st.buffs.drain > 0) st.buffs.drain = Math.max(0, st.buffs.drain - dt);
-    updateBee(dt);
+    updateBee(dt); updateMgr(dt);
     if (parts.length < 120 && Math.random() < dt * 1.4 && evtInfo().active) parts.push({ x: rnd(0, W), y: -10, vx: rnd(-25, 25), vy: rnd(50, 100), life: 0, max: rnd(2, 3.2), col: evtInfo().def.col, r: rnd(3, 5), kind: 'petal', rot: Math.random() * 6 });
     starT -= dt; if (starT <= 0) { spawnStar(true); starT = rnd(30, 55); }
     if (ev && ev.def.stars) { ev.starAcc = (ev.starAcc || 0) + dt; if (ev.starAcc > 0.45) { ev.starAcc = 0; spawnStar(false); } }
@@ -1564,7 +1570,7 @@ canvas {
   function doPrestige() {
     var gain = prestigeGain(); if (gain < 1) return;
     st.prestige.gp += gain; st.prestige.count++;
-    st.garden = 1; st.found = {}; UPKEYS.forEach(function (k) { st.up[k] = 0; });
+    st.garden = 1; st.found = {}; UPKEYS.forEach(function (k) { st.up[k] = 0; }); st.mgr = { p: 0, b: 0, y: 0 };
     st.gold = 10 * CK * st.prestige.gp; st.buffs = { reward: 0, drain: 0 };
     st.quests = []; while (st.quests.length < 3) st.quests.push(newQuest());
     clouds.length = 0; clouds.push(mkCloud(80, 120, 'p', 10), mkCloud(190, 190, 'b', -9), mkCloud(280, 130, 'y', 8));
@@ -1823,11 +1829,63 @@ canvas {
     });
     flies.forEach(drawFly);
     if (st.up.bee > 0) drawBee();
+    drawMgr();
     drops.forEach(dropShape);
     clouds.slice().sort(function (a, b) { return a.y - b.y; }).forEach(drawCloud);
     seeds.forEach(drawBubble);
     drawParts(); drawStars(); drawFloats(); drawHUD(); drawOverlay();
   }
+
+  /* ---------- bulut yöneticileri ---------- */
+  var MGR = { p: { base: 100 }, b: { base: 300 }, y: { base: 800 } }, MGRMAX = 8, mgrS = {};
+  function mgrCost(k) { return Math.round(MGR[k].base * CK * Math.pow(1.8, st.mgr[k])); }
+  function mgrEvery(k) { return Math.max(2.2, 9 - 0.9 * (st.mgr[k] - 1)); }
+  function mgrAmt(k) { return 0.22 + 0.03 * st.mgr[k]; }
+  function updateMgr(dt) {
+    ['p', 'b', 'y'].forEach(function (k) {
+      if (st.mgr[k] <= 0) return;
+      var m = mgrS[k] || (mgrS[k] = { t: 3 + Math.random() * 3, tgt: null, fl: 0, ph: Math.random() * 6 });
+      m.ph += dt; if (m.fl > 0) m.fl -= dt;
+      m.t -= dt; if (m.t > 0) return;
+      m.t = mgrEvery(k);
+      var pend = seeds.filter(function (q) { return !q.done && q.born >= 1 && q.need.indexOf(k) >= 0 && q.fill[k] < 1; });
+      if (!pend.length || gardenTimer > 0) return;
+      var q = pend[Math.floor(Math.random() * pend.length)];
+      q.fill[k] = Math.min(1, q.fill[k] + mgrAmt(k)); q.idle = 0;
+      m.tgt = q; m.fl = 0.45; burst(q.x, q.y - 30, HEX[k], 6); splashSound();
+      if (q.need.every(function (c) { return q.fill[c] >= 1; })) bloom(q);
+    });
+  }
+  function drawMgr() {
+    ['p', 'b', 'y'].forEach(function (k, i) {
+      if (st.mgr[k] <= 0) return;
+      var m = mgrS[k]; if (!m) return;
+      var x = 30 + i * 34, y = 484 + Math.sin(m.ph * 2) * 2;
+      if (m.fl > 0 && m.tgt && seeds.indexOf(m.tgt) >= 0) {
+        ctx.save(); ctx.globalAlpha = Math.min(1, m.fl / 0.45); ctx.strokeStyle = HEX[k]; ctx.lineWidth = 3; ctx.setLineDash([2, 5]); ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(x, y + 6); ctx.lineTo(m.tgt.x, m.tgt.y - 8); ctx.stroke(); ctx.restore();
+      }
+      ctx.save(); ctx.translate(x, y); ctx.scale(0.42, 0.42);
+      ctx.fillStyle = 'rgba(0,0,0,0.12)'; ctx.beginPath(); ctx.ellipse(2, 16, 40, 10, 0, 0, Math.PI * 2); ctx.fill();
+      cloudShape(HEX[k]); ctx.fillStyle = '#1d3b63'; circle(-10, 2, 3.2); circle(10, 2, 3.2);
+      ctx.fillStyle = '#fff'; ctx.fillRect(-18, -34, 36, 6); ctx.fillStyle = '#1d3b63'; ctx.fillRect(-12, -44, 24, 12);
+      ctx.restore();
+    });
+  }
+  function buildMgr() {
+    var h = '';
+    ['p', 'b', 'y'].forEach(function (k) {
+      var lv = st.mgr[k], c = mgrCost(k), can = lv < MGRMAX && st.gold >= c;
+      h += '<div class="row' + (can ? ' ready' : '') + '"><div class="row-t"><b>' + NAMES[k] + ' bulut yöneticisi' + (can ? '<em class="tag">Hazır</em>' : '') + '</b><span>' + (lv ? 'Sv. ' + lv + ' / ' + MGRMAX + ' · her ' + mgrEvery(k).toFixed(1).replace('.', ',') + ' sn\'de ' + NAMES[k].toLocaleLowerCase('tr') + ' çiçeklere kendiliğinden su verir' : 'İşe al: ' + NAMES[k].toLocaleLowerCase('tr') + ' çiçekleri senin yerine sular, sen yokken de çalışır.') + '</span></div><button class="buy" data-mg="' + k + '"' + (can ? '' : ' disabled') + '>' + (lv >= MGRMAX ? 'En üst' : (lv ? 'Geliştir' : 'İşe al') + ' · ' + fmt(c)) + '</button></div>';
+    });
+    $('mgrBox').innerHTML = h;
+  }
+  $('mgrBox').addEventListener('click', function (e) {
+    var b = e.target.closest('button[data-mg]'); if (!b || b.disabled) return;
+    var k = b.getAttribute('data-mg'), c = mgrCost(k); if (st.mgr[k] >= MGRMAX || st.gold < c) return;
+    st.gold -= c; st.mgr[k]++; buySound();
+    say(NAMES[k] + ' bulut yöneticisi ' + (st.mgr[k] === 1 ? 'işe alındı!' : 'seviye ' + st.mgr[k] + ' oldu!')); updateUI(); save();
+  });
 
   /* ---------- evren haritası ve önizleme ---------- */
   var pvW = null, WPOS = { sky: [10, 70], moon: [30, 32], ice: [50, 70], candy: [70, 32], space: [90, 68] };
@@ -1878,6 +1936,10 @@ canvas {
     lastTickMs = nowMs;
     var dt = Math.min(0.05, (now - last) / 1000); last = now;
     update(dt); draw(); renderWorldPreview();
+    if (dispGold !== st.gold) {
+      var dg = st.gold - dispGold; dispGold += dg * Math.min(1, dt * 7); if (Math.abs(st.gold - dispGold) < 1) dispGold = st.gold;
+      $('goldChip').textContent = 'Damla ' + fmt(dispGold);
+    }
     saveAcc += dt; if (saveAcc > 15) { saveAcc = 0; save(); }
     requestAnimationFrame(frame);
   }
