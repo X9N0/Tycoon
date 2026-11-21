@@ -631,9 +631,14 @@ canvas {
     var t = b.getAttribute('data-tab'); setTab(curTab === t ? null : t);
   });
   $('backdrop').addEventListener('click', function () { setTab(null); });
+  function resetClouds() {
+    clouds.length = 0; clouds.push(mkCloud(80, 120, 'p', 10), mkCloud(190, 190, 'b', -9), mkCloud(280, 130, 'y', 8));
+    bee.mode = 'idle'; bee.x = 40; bee.y = 330; bee.seed = null;
+  }
   function setWorld(id) {
     var w = worldById(id); st.world = w.id;
-    drops.length = 0; parts.length = 0; flies.length = 0;
+    drops.length = 0; parts.length = 0; flies.length = 0; stars.length = 0; floats.length = 0;
+    resetClouds();
     tierFx = 1.6; petalT = 0; bannerFx = true; bannerT = 3.2; bannerTitle = w.name; bannerSub = w.tag;
     tierStartSound(); say(w.name + ': ' + w.perk);
     updateUI(); save();
@@ -1757,9 +1762,11 @@ canvas {
   checkOffline();
   if (giftReady()) { say('Günlük hediyen hazır! Görevler sekmesinden al.'); showToast('Günlük hediye hazır!', 'Görevler sekmesinden ödülünü al.', 'quests'); }
   else say('Bir bulutu sürükle ve susayan çiçeklere yağmur yağdır. Su bitince bulutu ' + liquidTo() + ' götür.');
-  var last = performance.now(), saveAcc = 0;
+  var last = performance.now(), saveAcc = 0, lastTickMs = Date.now();
   function frame(now) {
-    if (now - last > 15000) checkOffline();
+    var nowMs = Date.now();
+    if (now - last > 15000 || nowMs - lastTickMs > 15000) checkOffline();
+    lastTickMs = nowMs;
     var dt = Math.min(0.05, (now - last) / 1000); last = now;
     update(dt); draw();
     saveAcc += dt; if (saveAcc > 15) { saveAcc = 0; save(); }
