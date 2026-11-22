@@ -260,6 +260,7 @@ canvas { border: 4px solid #fff; border-radius: 24px; box-shadow: 0 0 0 3px rgba
       <span class="chip" id="tierChip">Kademe 1</span>
       <span class="chip" id="gpChip" hidden></span>
       <button class="chip" id="chestChip" aria-label="Bahçe sandığı">Sandık 0/20</button>
+      <button class="chip" id="speedChip" aria-label="Oyun hızı" style="display:none">×1</button>
       <button class="chip" id="goldChip" aria-label="Yükseltmelere git">Damla 0</button>
       <button class="sound" id="sound" aria-pressed="false" aria-label="Sesi aç veya kapat">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M17 9a4 4 0 0 1 0 6"/><path d="M19.5 6.5a8 8 0 0 1 0 11"/></svg>
@@ -765,6 +766,7 @@ canvas { border: 4px solid #fff; border-radius: 24px; box-shadow: 0 0 0 3px rgba
     { id: 'worlds', t: 'Evrenler', ok: function () { return st.stats.maxTier >= 6; } }
   ], gateOn = null;
   function applyGates() {
+    var sc = $('speedChip'); sc.style.display = st.stats.maxTier >= 3 ? '' : 'none'; sc.textContent = st.set.spd === 2 ? '×2' : '×1'; sc.classList.toggle('ready', st.set.spd === 2);
     var first = gateOn === null; if (first) gateOn = {};
     GATES.forEach(function (g) {
       var on = g.ok();
@@ -774,6 +776,7 @@ canvas { border: 4px solid #fff; border-radius: 24px; box-shadow: 0 0 0 3px rgba
       else { var tb = $('tab' + g.id.charAt(0).toUpperCase() + g.id.slice(1)); if (tb) tb.style.display = on ? '' : 'none'; }
     });
   }
+  $('speedChip').addEventListener('click', function () { st.set.spd = st.set.spd === 2 ? 1 : 2; updateUI(); save(); });
   function updateUI() {
     applyGates();
     checkBadges();
@@ -2539,7 +2542,7 @@ canvas { border: 4px solid #fff; border-radius: 24px; box-shadow: 0 0 0 3px rgba
     var rawMs = now - last; fAvg = fAvg * 0.96 + Math.min(100, rawMs) * 0.04; fN++;
     if (fN > 90 && fAvg > 24 && !LOW) { LOW = true; setRes(1.25); }
     var dt = Math.min(0.05, (now - last) / 1000); last = now;
-    update(dt); draw(); renderWorldPreview();
+    update(dt); if (st.set.spd === 2) update(dt); draw(); renderWorldPreview();
     if (dispGold !== st.gold) {
       var dg = st.gold - dispGold; dispGold += dg * Math.min(1, dt * 7); if (Math.abs(st.gold - dispGold) < 1) dispGold = st.gold;
       $('goldChip').textContent = 'Damla ' + fmt(dispGold);
