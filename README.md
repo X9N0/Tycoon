@@ -1,3 +1,3 @@
-# Bulut Cobani
+# Bulut Çobanı
 
-Oyun dosyasi: index.html
+Oyun dosyası: index.html. GitHub Pages ile yayınlanınca iPhone'da Safari'den "Ana Ekrana Ekle" ile uygulama gibi kullanılır.
