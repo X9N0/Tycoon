@@ -457,18 +457,18 @@ canvas { border: 4px solid #fff; border-radius: 24px; box-shadow: 0 0 0 3px rgba
   };
   function D() { return DIFF[st.set.diff] || DIFF.normal; }
   var UPS = [
-    { id: 'power', name: 'Yağmur gücü', desc: 'Her damla çiçeği daha çok sular.', base: 24, g: 1.7, max: 10 },
-    { id: 'tank', name: 'Büyük bulut', desc: 'Bulutun suyu daha geç biter.', base: 24, g: 1.7, max: 10 },
-    { id: 'refill', name: 'Hızlı dolum', desc: 'Denizde bulut çabuk dolar.', base: 18, g: 1.7, max: 10 },
-    { id: 'wide', name: 'Geniş yağmur', desc: 'Yağmur daha geniş alana düşer.', base: 30, g: 1.7, max: 10 },
-    { id: 'idle', name: 'Bulut uykusu', desc: 'Gökte boşta duran bulutlar yavaşça dolar.', base: 36, g: 1.7, max: 10 },
-    { id: 'luck', name: 'Altın dokunuş', desc: 'Çiçekler ve görevler daha çok damla verir. Sınırsız!', base: 45, g: 1.35, max: Infinity, inc: true },
-    { id: 'cool', name: 'Hızlı yetenek', desc: 'Yetenekler daha çabuk hazır olur.', base: 36, g: 1.7, max: 10 },
-    { id: 'bee', name: 'Çalışkan arı', desc: 'Bir arı susayan çiçekleri senin yerine sular.', base: 60, g: 1.7, max: 10 },
-    { id: 'dream', name: 'Rüya bulutu', desc: 'Sen yokken dakikada daha çok damla biriktirir. Sınırsız!', base: 50, g: 1.35, max: Infinity, inc: true },
-    { id: 'vault', name: 'Uyku kasası', desc: 'Çevrimdışı birikim süresini uzatır: her seviye +1 saat.', base: 40, g: 1.4, max: 22 }
+    { id: 'power', name: 'Yağmur gücü', desc: 'Her damla çiçeği daha çok sular.', base: 24, g: 1.8, max: 10 },
+    { id: 'tank', name: 'Büyük bulut', desc: 'Bulutun suyu daha geç biter.', base: 24, g: 1.8, max: 10 },
+    { id: 'refill', name: 'Hızlı dolum', desc: 'Denizde bulut çabuk dolar.', base: 18, g: 1.8, max: 10 },
+    { id: 'wide', name: 'Geniş yağmur', desc: 'Yağmur daha geniş alana düşer.', base: 30, g: 1.8, max: 10 },
+    { id: 'idle', name: 'Bulut uykusu', desc: 'Gökte boşta duran bulutlar yavaşça dolar.', base: 36, g: 1.8, max: 10 },
+    { id: 'luck', name: 'Altın dokunuş', desc: 'Çiçekler ve görevler daha çok damla verir. Sınırsız!', base: 45, g: 1.42, max: Infinity, inc: true },
+    { id: 'cool', name: 'Hızlı yetenek', desc: 'Yetenekler daha çabuk hazır olur.', base: 36, g: 1.8, max: 10 },
+    { id: 'bee', name: 'Çalışkan arı', desc: 'Bir arı susayan çiçekleri senin yerine sular.', base: 60, g: 1.8, max: 10 },
+    { id: 'dream', name: 'Rüya bulutu', desc: 'Sen yokken dakikada daha çok damla biriktirir. Sınırsız!', base: 50, g: 1.42, max: Infinity, inc: true },
+    { id: 'vault', name: 'Uyku kasası', desc: 'Çevrimdışı birikim süresini uzatır: her seviye +1 saat.', base: 40, g: 1.45, max: 22 }
   ];
-  function upCost(u, lv) { return Math.round(u.base * CK * Math.pow(u.g, lv === undefined ? st.up[u.id] : lv)); }
+  function upCost(u, lv) { return Math.round(u.base * 1.5 * CK * infl() * Math.pow(u.g, lv === undefined ? st.up[u.id] : lv)); }
   function luckF() { return (1 + 0.15 * st.up.luck) * msF(st.up.luck); }
   function dreamF() { return (1 + 0.5 * st.up.dream) * msF(st.up.dream); }
   var bulkMode = '1';
@@ -483,10 +483,11 @@ canvas { border: 4px solid #fff; border-radius: 24px; box-shadow: 0 0 0 3px rgba
     return { n: want, cost: cost, ok: want > 0 && cost <= st.gold };
   }
   function canUp(u) { return st.up[u.id] < u.max && st.gold >= upCost(u); }
-  function tg() { return Math.pow(1.11, st.garden - 1); }
+  function tg() { return Math.pow(1.075, st.garden - 1); }
+  function infl() { return Math.pow(1.045, st.garden - 1); }
   function isBoss() { return st.garden >= 5 && st.garden % 5 === 0; }
   function waveF() { var m = st.garden % 5; if (st.garden >= 5 && m === 0) return 1.15; if (st.garden > 5 && (m === 1 || m === 2)) return 0.88; return 1; }
-  function tierF() { return Math.min(4.5, 1 + 0.14 * (st.garden - 1)) * waveF(); }
+  function tierF() { return Math.min(5, 1 + 0.16 * (st.garden - 1)) * waveF(); }
 
   /* olaylar, kombo, dinginlik: oyun içi geçici durumlar */
   var GEV = [
@@ -500,7 +501,7 @@ canvas { border: 4px solid #fff; border-radius: 24px; box-shadow: 0 0 0 3px rgba
   function evMod(k) { return ev && ev.def[k] !== undefined ? ev.def[k] : 1; }
 
   function fillPer() { return twF('fill') * 0.034 * (1 + 0.15 * st.up.power) * D().fill * WM('fill') / tierF(); }
-  function drainRate() { return twF('drain') * 0.13 * Math.min(2.5, 1 + 0.06 * (st.garden - 1)) * D().drain * Math.pow(0.88, st.up.tank) * evMod('drain') * WM('drain') * waveF() * (calmT > 0 ? 0.5 : 1) * (st.buffs.drain > 0 ? 0.5 : 1); }
+  function drainRate() { return twF('drain') * 0.13 * Math.min(3, 1 + 0.08 * (st.garden - 1)) * D().drain * Math.pow(0.88, st.up.tank) * evMod('drain') * WM('drain') * waveF() * (calmT > 0 ? 0.5 : 1) * (st.buffs.drain > 0 ? 0.5 : 1); }
   function decayRate() { return twF('decay') * 0.012 * (1 + 0.05 * (st.garden - 1)) * D().decay * evMod('decay') * WM('decay'); }
   function refillRate() { return 0.5 * (1 + 0.25 * st.up.refill); }
   function hitR() { return 30 + 4 * st.up.wide; }
@@ -1810,7 +1811,7 @@ canvas { border: 4px solid #fff; border-radius: 24px; box-shadow: 0 0 0 3px rgba
   /* ---------- yıldızlar ---------- */
   /* ---------- sandık, hediye balonu, hız mücadelesi ---------- */
   var giftT = rnd(28, 45), chal = null, chalNext = rnd(70, 100);
-  function chestNeed() { return 20 + 2 * Math.min(20, st.chest.opened); }
+  function chestNeed() { return 24 + 3 * Math.min(20, st.chest.opened); }
   function banner(t, sub, fx) { bannerFx = fx !== false; bannerT = 3.2; bannerTitle = t; bannerSub = sub; }
   function openChest() {
     var need = chestNeed();
@@ -2256,9 +2257,9 @@ canvas { border: 4px solid #fff; border-radius: 24px; box-shadow: 0 0 0 3px rgba
   }
   /* ---------- bulut yöneticileri ---------- */
   var MGR = { p: { base: 100 }, b: { base: 300 }, y: { base: 800 } }, MGRMAX = 8, mgrS = {};
-  function mgrCost(k) { if (st.mgr.p + st.mgr.b + st.mgr.y <= 0) return 12 * CK; return Math.round(MGR[k].base * CK * Math.pow(1.8, st.mgr[k])); }
-  function mgrEvery(k) { return Math.max(1.6, (9 - 0.9 * (st.mgr[k] - 1)) * (1 - 0.08 * treeLv('mgr'))); }
-  function mgrAmt(k) { return 0.22 + 0.03 * st.mgr[k]; }
+  function mgrCost(k) { if (st.mgr.p + st.mgr.b + st.mgr.y <= 0) return 25 * CK; return Math.round(MGR[k].base * 1.5 * CK * infl() * Math.pow(2, st.mgr[k])); }
+  function mgrEvery(k) { return Math.max(1.6, (11 - 0.9 * (st.mgr[k] - 1)) * (1 - 0.08 * treeLv('mgr'))); }
+  function mgrAmt(k) { return 0.18 + 0.025 * st.mgr[k]; }
   function updateMgr(dt) {
     ['p', 'b', 'y'].forEach(function (k) {
       if (st.mgr[k] <= 0) return;
